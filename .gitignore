@@ -1,0 +1,61 @@
+# -----------------------
+# Node / Frontend
+# -----------------------
+src/main/frontend/node_modules/
+src/main/frontend/flow-frontend/
+src/main/frontend/generated/
+src/main/frontend/VAADIN/static/
+src/main/frontend/webpack.generated.js
+src/main/frontend/.cache/
+src/main/frontend/.pnpm-store/
+src/main/frontend/yarn-error.log
+node_modules/
+
+# -----------------------
+# Maven / Java build
+# -----------------------
+target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+.mvn/wrapper/maven-wrapper.jar
+
+# -----------------------
+# STS / Spring Tool Suite
+# -----------------------
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# -----------------------
+# IntelliJ IDEA
+# -----------------------
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# -----------------------
+# NetBeans
+# -----------------------
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# -----------------------
+# VS Code
+# -----------------------
+.vscode/
+
+# -----------------------
+# Misc
+# -----------------------
+HELP.md

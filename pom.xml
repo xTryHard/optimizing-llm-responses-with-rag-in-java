@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.5.3</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.theitdojo</groupId>
+	<artifactId>optimizing-llm-responses-with-rag-in-java</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>optimizing-llm-responses-with-rag-in-java</name>
+	<description>Optimizing LLM Responses with Rag in Java</description>
+	<url/>
+	<licenses>
+		<license/>
+	</licenses>
+	<developers>
+		<developer/>
+	</developers>
+	<scm>
+		<connection/>
+		<developerConnection/>
+		<tag/>
+		<url/>
+	</scm>
+	<properties>
+		<java.version>21</java.version>
+		<spring-ai.version>1.0.0</spring-ai.version>
+		<vaadin.version>24.8.0</vaadin.version>
+	</properties>
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.vaadin</groupId>
+			<artifactId>vaadin-spring-boot-starter</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-bom</artifactId>
+			<version>1.0.0</version>
+			<type>pom</type>
+			<scope>import</scope>
+		</dependency>
+		<!-- Spring AI starter for Ollama (includes EmbeddingModel & ChatModel) -->
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-starter-model-ollama</artifactId>
+		</dependency>
+		<!-- your other dependencies… -->
+	</dependencies>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>com.vaadin</groupId>
+				<artifactId>vaadin-bom</artifactId>
+				<version>${vaadin.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework.ai</groupId>
+				<artifactId>spring-ai-bom</artifactId>
+				<version>${spring-ai.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<version>${project.parent.version}</version>
+			</plugin>
+		</plugins>
+	</build>
+
+	<profiles>
+		<profile>
+			<id>production</id>
+			<dependencies>
+				<dependency>
+					<groupId>com.vaadin</groupId>
+					<artifactId>vaadin-core</artifactId>
+					<exclusions>
+						<exclusion>
+							<groupId>com.vaadin</groupId>
+							<artifactId>vaadin-dev</artifactId>
+						</exclusion>
+					</exclusions>
+				</dependency>
+
+			</dependencies>
+<!--			<build>-->
+<!--				<plugins>-->
+<!--					<plugin>-->
+<!--						<groupId>com.vaadin</groupId>-->
+<!--						<artifactId>vaadin-maven-plugin</artifactId>-->
+<!--						<version>${vaadin.version}</version>-->
+<!--						<executions>-->
+<!--							<execution>-->
+<!--								<id>frontend</id>-->
+<!--								<phase>compile</phase>-->
+<!--								<goals>-->
+<!--									<goal>prepare-frontend</goal>-->
+<!--									<goal>build-frontend</goal>-->
+<!--								</goals>-->
+<!--							</execution>-->
+<!--						</executions>-->
+<!--					</plugin>-->
+<!--				</plugins>-->
+<!--			</build>-->
+		</profile>
+	</profiles>
+	<repositories>
+		<repository>
+			<id>central</id>
+			<name>Maven Central</name>
+			<url>https://repo.maven.apache.org/maven2</url>
+			<releases><enabled>true</enabled></releases>
+			<snapshots><enabled>false</enabled></snapshots>
+		</repository>
+	</repositories>
+</project>

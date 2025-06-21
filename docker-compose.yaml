@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  optimizing-with-rag-db:
+    image: pgvector/pgvector:pg16      # official pgvector image  [oai_citation:0‡hub.docker.com](https://hub.docker.com/r/pgvector/pgvector?utm_source=chatgpt.com)
+    container_name: optimizing-with-rag-db
+    environment:
+      POSTGRES_DB: optimizing-with-rag-db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5885:5432"
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+      # (Optional) initialize the extension automatically
+      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  pgvector_data:
