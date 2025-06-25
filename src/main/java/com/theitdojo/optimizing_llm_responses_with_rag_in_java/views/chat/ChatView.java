@@ -1,130 +1,261 @@
 package com.theitdojo.optimizing_llm_responses_with_rag_in_java.views.chat;
 
-import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.checkbox.Checkbox;
-import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.Hr;
-import com.vaadin.flow.component.html.H3;
-import com.vaadin.flow.component.icon.Icon;
-import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.theitdojo.optimizing_llm_responses_with_rag_in_java.service.ChatAssistantService;
+import com.vaadin.collaborationengine.UserInfo;
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.messages.MessageInput;
+import com.vaadin.flow.component.messages.MessageInputI18n;
+import com.vaadin.flow.component.messages.MessageList;
+import com.vaadin.flow.component.messages.MessageListItem;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.theme.lumo.LumoUtility;
+import com.vaadin.flow.theme.lumo.LumoUtility.Display;
+import com.vaadin.flow.theme.lumo.LumoUtility.Flex;
+import com.vaadin.flow.theme.lumo.LumoUtility.Width;
 
-@PageTitle("Chat with RAG")
-@Route("/")
-public class ChatView extends VerticalLayout {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-    private final Div chatArea = new Div();
-    private final TextField userInput = new TextField();
-    private final Checkbox ragToggle = new Checkbox("Use RAG", true);
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
-    public ChatView() {
-        // Full viewport with a unified background and centered content
-        setSizeFull();
-        setPadding(false);
+@PageTitle("Asistente Financiero Inteligente 🤖 🇩🇴")
+@Route("")
+@Menu(order = 0)
+public class ChatView extends HorizontalLayout {
+
+    transient Logger logger = LoggerFactory.getLogger(ChatView.class);
+
+    private final MessageList messageList;
+    private final VerticalLayout chatContainer;
+
+    private final UserInfo humanUserInfo;
+    private final String conversationId;
+
+    private static final UserInfo AI_USER_INFO = new UserInfo(
+            "ai-assistant-" + UUID.randomUUID().toString(), // Unique ID for AI
+            "AI Assistant 🤖",
+            "https://png.pngtree.com/png-clipart/20210311/original/pngtree-cute-robot-mascot-logo-png-image_6023574.jpg"
+    );
+
+    private final ChatAssistantService chatAssistantService;
+
+    public ChatView(ChatAssistantService chatAssistantService) {
+        this.conversationId = UUID.randomUUID().toString();
+        logger.info("ChatView initialized with conversationId: {}", this.conversationId);
+        this.chatAssistantService = chatAssistantService;
+
+        addClassNames("chat-view", Width.FULL, Display.FLEX, Flex.AUTO);
         setSpacing(false);
-        getStyle().set("background-color", "#f5f5f5");
-        setAlignItems(FlexComponent.Alignment.CENTER);
 
-        // Header with title and toggle
-        H3 title = new H3("RAG Chat");
-        title.getStyle().set("margin", "0").set("font-size", "var(--lumo-font-size-xl)");
+        humanUserInfo = new UserInfo(UUID.randomUUID().toString(), "Usuario");
 
-        HorizontalLayout header = new HorizontalLayout(title, ragToggle);
-        header.setWidthFull();
-        header.setPadding(true);
-        header.setAlignItems(FlexComponent.Alignment.CENTER);
-        header.getStyle().set("background-color", "#ffffff");
-        header.getStyle().set("box-shadow", "0 2px 4px rgba(0,0,0,0.1)");
+        messageList = new MessageList();
+        messageList.setMarkdown(true);
+        messageList.setSizeFull();
 
-        // Chat area: vertical scroll only, responsive width
-        chatArea.setHeightFull();
-        chatArea.setWidth("80%");
-        chatArea.getStyle().set("overflow-y", "auto");
-        chatArea.getStyle().set("overflow-x", "hidden");
-        chatArea.getStyle().set("padding", "var(--lumo-space-m)");
+        MessageInput input = new MessageInput();
+        input.setTooltipText("Escribe tu consulta financiera");
+        input.setI18n(new MessageInputI18n().setMessage("Mensaje").setSend("Consulta"));
+        input.setWidthFull();
 
-        // Input bar: responsive width and centered
-        userInput.setWidthFull();
-        userInput.setPlaceholder("Type a message...");
-        Button sendButton = new Button(new Icon(VaadinIcon.PLAY));
-        sendButton.addThemeName("primary");
-        sendButton.getStyle().set("min-width", "40px");
+        input.addSubmitListener(event -> {
+            String userMessageText = event.getValue();
+            if (userMessageText == null || userMessageText.isBlank()) {
+                return;
+            }
 
-        HorizontalLayout inputBar = new HorizontalLayout(userInput, sendButton);
-        inputBar.setWidth("80%");
-        inputBar.getStyle().set("margin", "0 auto");
-        inputBar.setPadding(true);
-        inputBar.setAlignItems(FlexComponent.Alignment.END);
-        inputBar.expand(userInput);
-        inputBar.getStyle().set("background-color", "#ffffff");
-        inputBar.getStyle().set("box-shadow", "0 -2px 4px rgba(0,0,0,0.1)");
+            MessageListItem userItem = createMessageListItem(userMessageText, humanUserInfo, false);
+            logger.info("Created user message item: '{}'", userItem.getText());
 
-        // Assemble view
-        add(header, chatArea, inputBar);
-        expand(chatArea);
+            final UI currentUI = UI.getCurrent();
+            if (currentUI == null || !currentUI.isAttached()) {
+                logger.error("UI not available or attached when submitting user message.");
+                return;
+            }
 
-        // Handlers
-        sendButton.addClickListener(e -> sendMessage());
-        userInput.addKeyPressListener(event -> {
-            if ("Enter".equals(event.getKey().getKeys().getFirst())) {
-                sendMessage();
+            currentUI.access(() -> {
+                if (messageList.isAttached()) {
+                    List<MessageListItem> currentDisplayItems = new ArrayList<>(messageList.getItems());
+                    currentDisplayItems.add(userItem);
+                    messageList.setItems(currentDisplayItems);
+
+                    logger.info("User message added to messageList. Total items now: {}. Last item: '{}'",
+                            messageList.getItems().size(),
+                            messageList.getItems().isEmpty() ? "N/A" : messageList.getItems().getLast().getText());
+
+                    scrollToBottomChatContainer(currentUI);
+                } else {
+                    logger.error("MessageList is null or not attached when trying to add user message.");
+                }
+            });
+
+            respondAsAiAssistant(userMessageText);
+        });
+
+        chatContainer = new VerticalLayout();
+        chatContainer.addClassNames(Flex.AUTO, LumoUtility.Overflow.AUTO, LumoUtility.Padding.NONE);
+        chatContainer.setSpacing(false);
+        chatContainer.setHeightFull();
+
+        chatContainer.add(messageList, input);
+        chatContainer.expand(messageList);
+
+        add(chatContainer);
+        expand(chatContainer);
+        setSizeFull();
+
+    }
+
+    private MessageListItem createMessageListItem(String text, UserInfo user, boolean isAssistant) {
+        MessageListItem item = new MessageListItem(text, Instant.now(), user.getName());
+        if (user.getImage() != null && !user.getImage().isEmpty()) {
+            item.setUserImage(user.getImage());
+        } else {
+            String name = user.getName();
+            if (name != null && !name.isEmpty()) {
+                String[] parts = name.split("\\s+");
+                if (parts.length > 1 && !parts[0].isEmpty() && !parts[1].isEmpty()) {
+                    item.setUserAbbreviation(String.valueOf(parts[0].charAt(0)) + parts[1].charAt(0));
+                } else {
+                    item.setUserAbbreviation(String.valueOf(name.charAt(0)));
+                }
+            } else {
+                item.setUserAbbreviation("?");
+            }
+        }
+        item.setUserColorIndex(isAssistant ? 2 : 1);
+        return item;
+    }
+
+
+    private void respondAsAiAssistant(String originalUserMessageText) {
+        final UI currentUI = UI.getCurrent();
+        if (currentUI == null) {
+            logger.error("Cannot respond as AI: UI is not available for chat");
+            return;
+        }
+
+        MessageListItem aiMessageItem = createMessageListItem("...", AI_USER_INFO, true);
+        addMessageToUI(currentUI, aiMessageItem);
+
+
+        StringBuilder fullResponse = new StringBuilder();
+
+        chatAssistantService.streamChatResponse(originalUserMessageText, this.conversationId)
+                .doOnNext(chunk -> handleStreamingChunk(currentUI, aiMessageItem, fullResponse, chunk))
+                .doOnComplete(() -> handleStreamCompletion(currentUI, aiMessageItem, fullResponse))
+                .doOnError(error -> handleStreamError(currentUI, aiMessageItem, error))
+                .subscribe(
+                        content -> { /* Handled in doOnNext */ },
+                        error -> { /* Handled in doOnError */ },
+                        () -> { /* Handled in doOnComplete */ }
+                );
+    }
+
+    private void addMessageToUI(UI currentUI, MessageListItem item) {
+        currentUI.access(() -> {
+            if (messageList.isAttached()) {
+                List<MessageListItem> currentDisplayItems = new ArrayList<>(messageList.getItems());
+                currentDisplayItems.add(item);
+                messageList.setItems(currentDisplayItems);
+                scrollToBottomChatContainer(currentUI);
+            } else {
+                logger.warn("MessageList not attached when trying to add item: {}", item.getText());
             }
         });
     }
 
-    private void sendMessage() {
-        String text = userInput.getValue().trim();
-        if (text.isEmpty()) {
-            return;
+    private void handleStreamingChunk(UI currentUI, MessageListItem aiMessageItem, StringBuilder fullResponse, String chunk) {
+        if (currentUI.isAttached()) {
+            currentUI.access(() -> {
+                if (messageList.isAttached() && aiMessageItem != null) {
+                    if (fullResponse.isEmpty() && chunk.isBlank() && aiMessageItem.getText().equals("...")) {
+                        return;
+                    }
+                    fullResponse.append(chunk);
+                    aiMessageItem.setText(fullResponse.toString());
+                    scrollToBottomChatContainer(currentUI);
+                }
+            });
         }
-        boolean useRag = ragToggle.getValue();
-
-        // User message
-        chatArea.add(createMessageBlock("U", text));
-        chatArea.add(new Hr());
-
-        // Bot response (placeholder)
-        String response = useRag ? "This is a response using RAG." : "This is a response without RAG.";
-        chatArea.add(createMessageBlock("B", response));
-        chatArea.add(new Hr());
-
-        userInput.clear();
-        chatArea.getElement().executeJs("this.scrollTop = this.scrollHeight");
     }
 
-    private Div createMessageBlock(String senderIcon, String message) {
-        // Avatar circle
-        Div avatar = new Div();
-        avatar.setText(senderIcon);
-        avatar.getStyle()
-                .set("width", "32px").set("height", "32px")
-                .set("border-radius", "50%")
-                .set("display", "flex").set("align-items", "center").set("justify-content", "center")
-                .set("background-color", senderIcon.equals("U") ? "#007BFF" : "#FFC107")
-                .set("color", "#ffffff");
+    private void handleStreamCompletion(UI currentUI, MessageListItem aiMessageItem, StringBuilder fullResponse) {
+        if (currentUI.isAttached()) {
+            currentUI.access(() -> {
+                if (messageList.isAttached() && aiMessageItem != null) {
+                    String finalResponseText = fullResponse.toString().trim();
+                    if (finalResponseText.isBlank() && aiMessageItem.getText().equals("...")) {
+                        aiMessageItem.setText("(AI no generó respuesta)");
+                        logger.info("AI Assistant (streamed) produced empty response for chat ");
+                    } else if (!finalResponseText.isBlank()) {
+                        aiMessageItem.setText(finalResponseText);
+                    }
+                    scrollToBottomChatContainer(currentUI);
+                } else {
+                    handleUIDetached("stream completion for ", null);
+                }
+            });
+        } else {
+            handleUINotAvailable("stream completion for ", null);
+        }
+    }
 
-        // Message bubble
-        Div bubble = new Div();
-        bubble.setText(message);
-        bubble.getStyle()
-                .set("padding", "var(--lumo-space-s)")
-                .set("border-radius", "8px")
-                .set("background-color", senderIcon.equals("U") ? "#E1F5FE" : "#FFF8E1")
-                .set("max-width", "100%");
+    private void handleStreamError(UI currentUI, MessageListItem aiMessageItem, Throwable error) {
+        logger.error("Error streaming AI response for chat {}", error.getMessage(), error);
+        if (currentUI.isAttached()) {
+            currentUI.access(() -> {
+                if (messageList.isAttached()) {
+                    List<MessageListItem> currentDisplayItems = new ArrayList<>(messageList.getItems());
+                    if (aiMessageItem != null) {
+                        currentDisplayItems.remove(aiMessageItem);
+                    }
 
-        // Container: left-aligned with indent within responsive width
-        HorizontalLayout container = new HorizontalLayout(avatar, bubble);
-        container.setWidthFull();
-        container.setAlignItems(FlexComponent.Alignment.START);
-        container.getStyle().set("gap", "8px");
-        container.getStyle().set("margin-left", "var(--lumo-space-m)");
-        container.setJustifyContentMode(FlexComponent.JustifyContentMode.START);
+                    MessageListItem errorItem = createMessageListItem(
+                            "Lo siento, ocurrió un error al intentar responder: " + error.getMessage(),
+                            new UserInfo("system-error", "System Error"), true);
+                    errorItem.setUserColorIndex(3);
 
-        return new Div(container);
+                    currentDisplayItems.add(errorItem);
+                    messageList.setItems(currentDisplayItems);
+
+                    scrollToBottomChatContainer(currentUI);
+                } else {
+                    handleUIDetached("stream error for ", error);
+                }
+            });
+        } else {
+            handleUINotAvailable("stream error for ", error);
+        }
+    }
+
+    private void scrollToBottomChatContainer(UI ui) {
+        if (ui != null && ui.isAttached() && chatContainer != null && chatContainer.isAttached()) {
+            ui.access(() -> {
+                if (chatContainer.isAttached()) {
+                    chatContainer.getElement().executeJs("setTimeout(() => { this.scrollTop = this.scrollHeight; }, 0);");
+                }
+            });
+        }
+    }
+
+    private void cleanupLingeringUI(String logContext, Throwable error) {
+        String errorMessage = error != null ? error.getMessage() : "N/A";
+        logger.warn("UI state issue during {}. Error: {}. No specific UI elements to clean in this version.", logContext, errorMessage);
+    }
+
+    private void handleUIDetached(String context, Throwable error) {
+        cleanupLingeringUI("UI detached during " + context, error);
+    }
+
+    private void handleUINotAvailable(String context, Throwable error) {
+        cleanupLingeringUI("UI not available for " + context, error);
     }
 }
