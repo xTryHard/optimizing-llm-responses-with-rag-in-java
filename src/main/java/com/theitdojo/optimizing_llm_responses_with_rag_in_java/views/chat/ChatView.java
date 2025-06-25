@@ -19,6 +19,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility.Width;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -27,7 +28,7 @@ import java.util.UUID;
 
 @PageTitle("Asistente Financiero Inteligente 🤖 🇩🇴")
 @Route("")
-@Menu(order = 0)
+@Menu(order = 0, icon = LineAwesomeIconUrl.COMMENTS)
 public class ChatView extends HorizontalLayout {
 
     transient Logger logger = LoggerFactory.getLogger(ChatView.class);
