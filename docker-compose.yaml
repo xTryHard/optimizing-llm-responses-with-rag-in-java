@@ -14,6 +14,18 @@ services:
       - pgvector_data:/var/lib/postgresql/data
       # (Optional) initialize the extension automatically
       # - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama_data:/root/.ollama  # Bind host directory to container directory
+    restart: unless-stopped
+    entrypoint: >
+      sh -c "ollama serve & sleep 5 && ollama pull llama3.1:latest && tail -f /dev/null"
 
 volumes:
   pgvector_data:
+  ollama_data:
+    driver: local
