@@ -2,8 +2,10 @@ package com.theitdojo.optimizing_llm_responses_with_rag_in_java.service;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -11,9 +13,14 @@ import reactor.core.publisher.Flux;
 public class ChatAssistantServiceImpl implements ChatAssistantService {
 
     private final ChatClient.Builder builder;
+    private final VectorStore vectorStore;
 
-    public ChatAssistantServiceImpl(ChatClient.Builder chatClientBuilder) {
-        this.builder = chatClientBuilder;
+    public ChatAssistantServiceImpl(
+            ChatClient.Builder chatClientBuilder,
+            VectorStore vectorStore
+    ) {
+        this.builder     = chatClientBuilder;
+        this.vectorStore = vectorStore;
     }
 
     @Override
@@ -23,25 +30,30 @@ public class ChatAssistantServiceImpl implements ChatAssistantService {
                 .maxMessages(10) // Default is 20, changing to 10 for testing purposes
                 .build();
 
+        // Pending: sanciones, reglas, glosario y decálogo
         final String SYSTEM_PROMPT = """
-                Take a deep breath and work on this step by step.
-                You are a friendly chatbot that answers question about the Dominican Republic finance system, stock markets, banking, economy.
-                Act as an economist in your answers.
-                Answer in spanish always!"
-                /nothink)
-                """;
+            Eres un asistente experto de la SIMV (Superintendencia del Mercado de Valores \
+            de la República Dominicana). Tus fuentes incluyen documentos de las siguientes \
+            categorías: leyes. \
+            Solo debes responder basándote en el contexto recuperado de estas fuentes. \
+            Si la respuesta no está en las fuentes proporcionadas, responde: \
+            “Lo siento, no dispongo de esa información.” No inventes datos y responde \
+            siempre en español.
+            """;
 
         ChatClient chatClient = builder
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .defaultSystem(SYSTEM_PROMPT)
+                .defaultAdvisors(
+                        QuestionAnswerAdvisor.builder(vectorStore).build(),
+                        MessageChatMemoryAdvisor.builder(chatMemory).build()
+                )
                 .build();
 
-        return chatClient.
-                prompt()
+        return chatClient
+                .prompt()
                 .user(prompt)
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .stream()
                 .content();
     }
-
 }
