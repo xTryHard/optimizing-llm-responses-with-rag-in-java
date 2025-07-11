@@ -1,8 +1,10 @@
 package com.theitdojo.optimizing_llm_responses_with_rag_in_java.views.chat;
 
 import com.theitdojo.optimizing_llm_responses_with_rag_in_java.service.ChatAssistantService;
+import com.theitdojo.optimizing_llm_responses_with_rag_in_java.state.RagState;
 import com.vaadin.collaborationengine.UserInfo;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.messages.MessageInput;
 import com.vaadin.flow.component.messages.MessageInputI18n;
 import com.vaadin.flow.component.messages.MessageList;
@@ -41,13 +43,16 @@ public class ChatView extends HorizontalLayout {
 
     private static final UserInfo AI_USER_INFO = new UserInfo(
             "ai-assistant-" + UUID.randomUUID().toString(), // Unique ID for AI
-            "AI Assistant 🤖",
+            "SancionesSIMV Bot 🤖",
             "https://png.pngtree.com/png-clipart/20210311/original/pngtree-cute-robot-mascot-logo-png-image_6023574.jpg"
     );
 
     private final ChatAssistantService chatAssistantService;
 
-    public ChatView(ChatAssistantService chatAssistantService) {
+    private final RagState ragState;
+
+    public ChatView(RagState ragState, ChatAssistantService chatAssistantService) {
+        this.ragState = ragState;
         this.conversationId = UUID.randomUUID().toString();
         logger.info("ChatView initialized with conversationId: {}", this.conversationId);
         this.chatAssistantService = chatAssistantService;
@@ -137,6 +142,7 @@ public class ChatView extends HorizontalLayout {
 
 
     private void respondAsAiAssistant(String originalUserMessageText) {
+        boolean useRag = ragState.isEnabled();
         final UI currentUI = UI.getCurrent();
         if (currentUI == null) {
             logger.error("Cannot respond as AI: UI is not available for chat");
@@ -149,7 +155,7 @@ public class ChatView extends HorizontalLayout {
 
         StringBuilder fullResponse = new StringBuilder();
 
-        chatAssistantService.streamChatResponse(originalUserMessageText, this.conversationId)
+        chatAssistantService.   streamChatResponse(originalUserMessageText, this.conversationId, useRag)
                 .doOnNext(chunk -> handleStreamingChunk(currentUI, aiMessageItem, fullResponse, chunk))
                 .doOnComplete(() -> handleStreamCompletion(currentUI, aiMessageItem, fullResponse))
                 .doOnError(error -> handleStreamError(currentUI, aiMessageItem, error))

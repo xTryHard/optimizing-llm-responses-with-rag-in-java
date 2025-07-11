@@ -1,5 +1,6 @@
 package com.theitdojo.optimizing_llm_responses_with_rag_in_java.service;
 
+import com.theitdojo.optimizing_llm_responses_with_rag_in_java.state.RagState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -14,49 +15,28 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 @Service
 public class ChatAssistantServiceImpl implements ChatAssistantService {
 
-    private final ChatClient.Builder builder;
-    private final VectorStore vectorStore;
-    private static final Logger log = LoggerFactory.getLogger(ChatAssistantServiceImpl.class);
+    /* ---------- constants built once ---------- */
 
-    public ChatAssistantServiceImpl(
-            ChatClient.Builder chatClientBuilder,
-            VectorStore vectorStore
-    ) {
-        this.builder     = chatClientBuilder;
-        this.vectorStore = vectorStore;
-    }
-
-    @Override
-    public Flux<String> streamChatResponse(String prompt, String conversationId) {
-        // 1) Memory: keep last 3 messages
-        var chatMemory = MessageWindowChatMemory.builder()
-                .maxMessages(3)
-                .build();
-
-        // 2) System prompt
-        final String SYSTEM_PROMPT = """
-            Eres **SancionesSIMV Bot**, asistente experto de la Superintendencia del Mercado de Valores de la República Dominicana.
-            Response presentándote con los datos anteriores si te preguntan quién eres.
-            Debes ser cordial y amable, manteniendo el respeto adecuado y la profesionalidad.
-            Tu objetivo es ayudar al usuario a adquirir información sobre sanciones aplicadas a entidades del mercado de valores.
-            Solo debes responder en base al contexto recuperado de esas sanciones.
-            Si te consultan sobre información inadecuada o desconocida, responde literalmente:
+    private static final String SYSTEM_PROMPT = """
+            Eres **SancionesSIMV Bot**, asistente experto de la Superintendencia del Mercado de Valores (RD).
+            Si preguntan quién eres, preséntate con esos datos.
+            Responde siempre en español, cordial y profesional.
+            Solo responde sobre sanciones del SIMV; si no sabes, di:
             "Lo siento, no manejo esta información. Estoy diseñado para responder tus preguntas sobre las sanciones del SIMV".
-            Debes responder **SIEMPRE** en español.
             """;
 
-        // 3) Prompt template for QA advisor
-        var qaTemplate = PromptTemplate.builder()
-                .renderer(
-                        StTemplateRenderer.builder()
-                                .startDelimiterToken('<')
-                                .endDelimiterToken('>')
-                                .build()
-                )
-                .template("""
+    private static final PromptTemplate QA_TEMPLATE = PromptTemplate.builder()
+            .renderer(StTemplateRenderer.builder()
+                    .startDelimiterToken('<')
+                    .endDelimiterToken('>')
+                    .build())
+            .template("""
                     Consulta:
                     <query>
 
@@ -70,28 +50,69 @@ public class ChatAssistantServiceImpl implements ChatAssistantService {
                     Basado en ese contexto, responde la consulta.
                     /no_think
                     """)
-                .build();
+            .build();
 
-        // 4) QA Advisor with optional filterExpression
+    /* ---------- reusable objects ---------- */
+
+    private final ChatClient ragClient;     // LLM + QA advisor
+    private final ChatClient noRagClient;   // plain LLM
+    private final ConcurrentMap<String, ChatMemory> memories = new ConcurrentHashMap<>();
+
+    /* ---------- constructor ---------- */
+
+    public ChatAssistantServiceImpl(ChatClient.Builder baseBuilder,
+                                    VectorStore vectorStore) {
+
+        // Build the QA advisor once
         var qaAdvisor = QuestionAnswerAdvisor.builder(vectorStore)
-                .promptTemplate(qaTemplate)
-                .searchRequest(SearchRequest.builder().similarityThreshold(0.65f).build())
+                .promptTemplate(QA_TEMPLATE)
+                .searchRequest(SearchRequest.builder()
+                        .similarityThreshold(0.7f)
+                        .build())
                 .build();
 
-        // 5) Build ChatClient
-        var chatClient = builder
+        // Plain client (no RAG, no memory)
+        noRagClient = baseBuilder.clone()
+                .defaultSystem("/no_think")
+                .build();
+
+        // RAG client (QA advisor wired in)
+        ragClient = baseBuilder.clone()
                 .defaultSystem(SYSTEM_PROMPT)
-                .defaultAdvisors(
-                        qaAdvisor,
-                        MessageChatMemoryAdvisor.builder(chatMemory).build()
-                )
+                .defaultAdvisors(qaAdvisor)      // RAG context
                 .build();
+    }
 
-        // 6) Stream the response
-        return chatClient
+    /* ---------- helper: per-conversation memory ---------- */
+
+    private MessageChatMemoryAdvisor memoryAdvisor(String conversationId) {
+        var mem = memories.computeIfAbsent(conversationId,
+                id -> MessageWindowChatMemory.builder()
+                        .maxMessages(6)
+                        .build());
+        return MessageChatMemoryAdvisor.builder(mem).build();
+    }
+
+    /* ---------- public API ---------- */
+
+    @Override
+    public Flux<String> streamChatResponse(String prompt,
+                                           String conversationId,
+                                           boolean useRag) {
+
+        ChatClient client = useRag ? ragClient : noRagClient;
+
+        return client
                 .prompt()
                 .user(prompt)
-                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))
+                .advisors(a -> {
+                    a.param(ChatMemory.CONVERSATION_ID, conversationId);
+
+                    // attach sliding-window memory **only when RAG is ON**
+                    if (useRag) {
+                        a.advisors(memoryAdvisor(conversationId));
+                    }
+                })
                 .stream()
                 .content();
     }

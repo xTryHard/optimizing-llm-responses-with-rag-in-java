@@ -1,7 +1,10 @@
 package com.theitdojo.optimizing_llm_responses_with_rag_in_java.views;
 
+import com.theitdojo.optimizing_llm_responses_with_rag_in_java.state.RagState;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
+import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Footer;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.icon.SvgIcon;
@@ -24,8 +27,10 @@ import java.util.List;
 public class MainLayout extends AppLayout {
 
     private H1 viewTitle;
+    private final RagState ragState;
 
-    public MainLayout() {
+    public MainLayout(RagState ragState) {
+        this.ragState = ragState;
         setPrimarySection(Section.DRAWER);
         addDrawerContent();
         addHeaderContent();
@@ -34,11 +39,21 @@ public class MainLayout extends AppLayout {
     private void addHeaderContent() {
         DrawerToggle toggle = new DrawerToggle();
         toggle.setAriaLabel("Menu toggle");
+        toggle.addClassNames(LumoUtility.Margin.NONE);
 
         viewTitle = new H1();
         viewTitle.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
 
-        addToNavbar(true, toggle, viewTitle);
+
+        var container = new Div();
+        container.addClassNames(LumoUtility.Display.FLEX, LumoUtility.JustifyContent.BETWEEN, LumoUtility.Width.FULL, LumoUtility.AlignItems.CENTER);
+
+        Checkbox ragToggle = new Checkbox("Activar RAG", ragState.isEnabled());
+        ragToggle.addValueChangeListener(e -> ragState.setEnabled(e.getValue()));
+        ragToggle.addClassNames(LumoUtility.Margin.Right.MEDIUM);
+
+        container.add(viewTitle, ragToggle);
+        addToNavbar(true, toggle, container);
     }
 
     private void addDrawerContent() {
