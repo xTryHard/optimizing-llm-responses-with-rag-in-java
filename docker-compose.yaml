@@ -23,7 +23,7 @@ services:
       - ./ollama_data:/root/.ollama  # Bind host directory to container directory
     restart: unless-stopped
     entrypoint: >
-      sh -c "OLLAMA_CONTEXT_LENGTH=16384 ollama serve & sleep 5 && ollama pull qwen3:1.7b-q4_K_M && tail -f /dev/null"
+      sh -c "OLLAMA_CONTEXT_LENGTH=16384 ollama serve & sleep 5 && ollama pull qwen3:1.7b-q4_K_M && ollama pull mxbai-embed-large && tail -f /dev/null"
 
 volumes:
   pgvector_data:
