@@ -1,10 +1,4 @@
-# 🛠️ Optimizando respuestas de LLMs con Generación Aumentada por Recuperación (RAG) en Java
-
-Los modelos de lenguaje de gran tamaño (LLMs, por sus siglas en inglés de “Large Language Models”) son muy potentes, pero tienen dificultades para manejar información en tiempo real y, con frecuencia, generan respuestas erróneas o “alucinaciones”.
-En este taller práctico aprenderás cómo potenciar tu chatbot, basado en un LLM, mediante Generación Aumentada por Recuperación (RAG - Retrieval Augmented Generation) utilizando Java y SpringAI.
-
-
-#s Configura tu entorno local
+# Configura tu entorno local
 
 Aquí están las instrucciones para ejecutar el taller localmente.
 
@@ -64,3 +58,5 @@ Ejecutar la aplicación
 ```shell
   mvn spring-boot:run
 ```
+
+[Go back](../../README.md)
