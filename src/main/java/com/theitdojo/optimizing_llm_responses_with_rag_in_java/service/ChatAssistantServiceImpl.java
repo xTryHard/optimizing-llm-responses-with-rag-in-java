@@ -1,8 +1,8 @@
 package com.theitdojo.optimizing_llm_responses_with_rag_in_java.service;
 
-import com.theitdojo.optimizing_llm_responses_with_rag_in_java.state.RagState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
@@ -21,14 +21,57 @@ import java.util.concurrent.ConcurrentMap;
 @Service
 public class ChatAssistantServiceImpl implements ChatAssistantService {
 
+    private static final Logger log =
+            LoggerFactory.getLogger(ChatAssistantServiceImpl.class);
+
     /* ---------- constants built once ---------- */
 
     private static final String SYSTEM_PROMPT = """
-            Eres **SancionesSIMV Bot**, asistente experto de la Superintendencia del Mercado de Valores (RD).
-            Si preguntan quién eres, preséntate con esos datos.
-            Responde siempre en español, cordial y profesional.
-            Solo responde sobre sanciones del SIMV; si no sabes, di:
-            "Lo siento, no manejo esta información. Estoy diseñado para responder tus preguntas sobre las sanciones del SIMV".
+            Eres **SIMV Bot**, asistente virtual de la Superintendencia del Mercado de Valores
+            de la República Dominicana (SIMV).
+            
+            RESPONDE SIEMPRE EN ESPAÑOL con un tono cordial, formal y conciso.
+            
+            ───────────────────────────
+            ÁMBITO DE CONOCIMIENTO
+            ───────────────────────────
+            • Sanciones administrativas definitivas publicadas por la SIMV \s
+            • Normativa vigente contenida en el **Decreto No. 664-12** (Reglamento de
+            Aplicación de la Ley de Mercado de Valores, RLMV)
+            
+            Solo puedes utilizar la información recuperada mediante RAG.
+            
+            ───────────────────────────
+            TIPOS DE CONSULTA QUE MANEJAS
+            ───────────────────────────
+            1. **Sanciones puntuales** – «¿Qué sanciones recibió *Entidad X*?» \s
+            2. **Filtro temporal** – «Sanciones 2023» o «entre 2019 y 2021». \s
+            3. **Estadísticas** – cuentas, totales, promedios, máximos/mínimos. \s
+            4. **Tendencias** – comparaciones entre años. \s
+            5. **Detalle de resolución** – «Explícame la R-SIMV-2024-07-IV-R». \s
+            6. **Consulta normativa** \s
+               • Búsqueda de artículos: «¿Qué dice el Artículo 37?» \s
+               • Definiciones: «Define “instrumentos derivados” según el Reglamento». \s
+               • Obligaciones/prohibiciones: «¿Qué ocurre si un emisor envía información
+                 falsa?» \s
+               • Procedimientos: «¿Cómo se designa al representante de la masa de
+                 obligacionistas?»
+            
+            ───────────────────────────
+            REGLAS DE FORMATO
+            ───────────────────────────
+            • **Para sanciones** incluye: resolución, fecha (dd/MM/yyyy), entidad,
+              tipo y monto. \s
+            • **RD$** = peso dominicano (DOP). Escribe montos así: «RD$ 1 234 567.89». \s
+            • **Para normativa** cita siempre el artículo («Art. 45») y, cuando sea útil,
+              el título del capítulo o sección. \s
+            • Usa viñetas ≤ 2 filas o tablas Markdown ≥ 3 filas / ≥ 2 columnas. \s
+            • Ordena sanciones de la más reciente a la más antigua. \s
+            • Si la pregunta requiere cálculos (total, promedio, etc.) opera con los
+              montos presentes en el contexto. \s
+            • Si la pregunta es ambigua solicita una aclaración breve antes de responder.
+            ""\";
+            
             """;
 
     private static final PromptTemplate QA_TEMPLATE = PromptTemplate.builder()
@@ -37,17 +80,24 @@ public class ChatAssistantServiceImpl implements ChatAssistantService {
                     .endDelimiterToken('>')
                     .build())
             .template("""
-                    Consulta:
+                    PREGUNTA DEL USUARIO:
                     <query>
-
-                    Contexto recuperado:
-                    --------------------
+                    
+                    CONTEXTO RECUPERADO (RAG)
+                    -------------------------
                     <question_answer_context>
-                    --------------------
-
-                    En cumplimiento del mandato del artículo 346 de la Ley 249-17, la SIMV publica las sanciones administrativas definitivas impuestas a la fecha.
-
-                    Basado en ese contexto, responde la consulta.
+                    -------------------------
+                    
+                    INSTRUCCIONES CRÍTICAS
+                    1. Si el bloque de CONTEXTO está vacío o es insuficiente, responde EXACTAMENTE:
+                       «Lo siento, no dispongo de esa información en mis registros. \s
+                        Estoy especializado únicamente en las sanciones y la normativa publicadas por
+                        la SIMV. Si lo desea, reformule su consulta o facilite más detalles y con gusto le
+                        ayudaré.»
+                    2. De lo contrario, responde SOLO con los datos del contexto: \s
+                       • Para sanciones: aplica las reglas de formato y, si procede, realiza los
+                         cálculos solicitados. \s
+                       • Para normativa: cita los artículos pertinentes y resume en lenguaje claro. \s
                     /no_think
                     """)
             .build();
@@ -100,8 +150,11 @@ public class ChatAssistantServiceImpl implements ChatAssistantService {
                                            String conversationId,
                                            boolean useRag) {
 
+        MDC.put("cid", conversationId);
+        log.info("Received prompt ({} chars). RAG={}", prompt.length(), useRag);
         ChatClient client = useRag ? ragClient : noRagClient;
 
+        long t0 = System.nanoTime();
         return client
                 .prompt()
                 .user(prompt)
@@ -114,6 +167,12 @@ public class ChatAssistantServiceImpl implements ChatAssistantService {
                     }
                 })
                 .stream()
-                .content();
+                .content()
+                .doOnComplete(() ->
+                        log.info("LLM responded in {} ms",
+                                (System.nanoTime() - t0) / 1_000_000))
+                .doOnError(ex ->
+                        log.error("Error generating response", ex))
+                .doFinally(sig -> MDC.clear());
     }
 }
