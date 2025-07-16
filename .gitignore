@@ -59,3 +59,6 @@ build/
 # Misc
 # -----------------------
 HELP.md
+.DS_STORE
+ollama_data/
+debug.*

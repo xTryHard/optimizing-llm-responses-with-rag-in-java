@@ -39,12 +39,21 @@ Este comando creará e iniciará dos contenedores en segundo plano (-d):
 - `ollama`: El servidor para los modelos de lenguaje (LLM). La primera vez que se ejecute, descargará automáticamente el modelo `qwen3:1.7b-q4_K_M`. __¡Ten paciencia, este paso puede tardar varios minutos dependiendo de tu conexión a internet!__
 - `optimizing-with-rag-db`: La base de datos PostgreSQL con la extensión `pgvector` que usaremos para los ejercicios de RAG.
 
-2. Verificar que los contenedores están corriendo: Puedes verificar que ambos servicios se están ejecutando con el comando:
+2. Verificar que los contenedores están corriendo: 
+- Puedes verificar que ambos servicios se están ejecutando con el comando:
 ```shell
   docker-compose ps
 ```
+Deberías ver ambos servicios (`ollama` y `optimizing-with-rag-db`) con el estado running o up
 
-Deberías ver ambos servicios (ollama y optimizing-with-rag-db) con el estado running o up
+- Como alternativa, usar el script de comprobación que añadimos (`check_services.sh`), ejecutándolo desde la raíz del proyecto:
+```shell
+  ./check_services.sh
+```
+Nota: Si no tienes permisos de ejecución, puedes otorgarlos con:
+```shell
+  chmod +x check_services.sh
+```
 
 ## Ejecutar el taller
 
