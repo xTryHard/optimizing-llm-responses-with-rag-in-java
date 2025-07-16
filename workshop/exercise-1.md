@@ -51,6 +51,7 @@ Actualiza el archivo `system-prompt.md` en la carpeta `src/main/resources` con e
 
 ```markdown
 Responde la pregunta lo más breve posible, en español.
+/no_think
 ```
 
 ### Parte 3 - Configurar el model desde `application.properties`
