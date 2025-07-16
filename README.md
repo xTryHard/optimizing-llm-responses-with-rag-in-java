@@ -36,7 +36,7 @@ Usaremos Docker Compose para levantar todos los servicios necesarios con un solo
   docker-compose up -d
 ```
 Este comando creará e iniciará dos contenedores en segundo plano (-d):
-- `ollama`: El servidor para los modelos de lenguaje (LLM). La primera vez que se ejecute, descargará automáticamente el modelo llama3.1. __¡Ten paciencia, este paso puede tardar varios minutos dependiendo de tu conexión a internet!__
+- `ollama`: El servidor para los modelos de lenguaje (LLM). La primera vez que se ejecute, descargará automáticamente el modelo `qwen3:1.7b-q4_K_M`. __¡Ten paciencia, este paso puede tardar varios minutos dependiendo de tu conexión a internet!__
 - `optimizing-with-rag-db`: La base de datos PostgreSQL con la extensión `pgvector` que usaremos para los ejercicios de RAG.
 
 2. Verificar que los contenedores están corriendo: Puedes verificar que ambos servicios se están ejecutando con el comando:
@@ -56,11 +56,7 @@ Estos comandos se pueden ejecutar tantas veces como sea necesario para completar
 ```
 
 Construir la aplicación
-```shell
-  mvn clean install
-```
+`./mvnw clean install`
 
 Ejecutar la aplicación
-```shell
-  mvn spring-boot:run
-```
+`./mvnw spring-boot:run`
