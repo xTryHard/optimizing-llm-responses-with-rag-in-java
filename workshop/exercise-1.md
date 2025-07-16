@@ -234,3 +234,5 @@ En este primer ejercicio, hemos sentado las bases para interactuar con un LLM de
 - __Integración Sencilla__: Al exponer una API estándar, Ollama se integra sin problemas con Spring AI, convirtiéndose en la opción perfecta para prototipar y desarrollar nuestras aplicaciones de IA.
 
 ### Próximo ejercicio
+
+[Ejercicio 2: Memoria Conversacional (Chat Memory)](./exercise-2.md)
