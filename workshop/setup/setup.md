@@ -1,9 +1,3 @@
-# 🛠️ Optimizando respuestas de LLMs con Generación Aumentada por Recuperación (RAG) en Java
-
-Los modelos de lenguaje de gran tamaño (LLMs, por sus siglas en inglés de “Large Language Models”) son muy potentes, pero tienen dificultades para manejar información en tiempo real y, con frecuencia, generan respuestas erróneas o “alucinaciones”.
-En este taller práctico aprenderás cómo potenciar tu chatbot, basado en un LLM, mediante Generación Aumentada por Recuperación (RAG - Retrieval Augmented Generation) utilizando Java y SpringAI.
-
-
 # Configura tu entorno local
 
 Aquí están las instrucciones para ejecutar el taller localmente.
@@ -36,7 +30,7 @@ Usaremos Docker Compose para levantar todos los servicios necesarios con un solo
   docker-compose up -d
 ```
 Este comando creará e iniciará dos contenedores en segundo plano (-d):
-- `ollama`: El servidor para los modelos de lenguaje (LLM). La primera vez que se ejecute, descargará automáticamente el modelo `qwen3:1.7b-q4_K_M`. __¡Ten paciencia, este paso puede tardar varios minutos dependiendo de tu conexión a internet!__
+- `ollama`: El servidor para los modelos de lenguaje (LLM). La primera vez que se ejecute, descargará automáticamente el modelo llama3.1. __¡Ten paciencia, este paso puede tardar varios minutos dependiendo de tu conexión a internet!__
 - `optimizing-with-rag-db`: La base de datos PostgreSQL con la extensión `pgvector` que usaremos para los ejercicios de RAG.
 
 2. Verificar que los contenedores están corriendo: Puedes verificar que ambos servicios se están ejecutando con el comando:
@@ -56,7 +50,13 @@ Estos comandos se pueden ejecutar tantas veces como sea necesario para completar
 ```
 
 Construir la aplicación
-`./mvnw clean install`
+```shell
+  mvn clean install
+```
 
 Ejecutar la aplicación
-`./mvnw spring-boot:run`
+```shell
+  mvn spring-boot:run
+```
+
+[Go back](../../README.md)
