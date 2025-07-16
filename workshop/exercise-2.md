@@ -158,6 +158,38 @@ Esto se hace encadenando `.chatReference(conversationId)` y `.chatMemory(chatMem
     // ... Asegúrate de actualizar también askQuestion y askQuestionWithContext
 ```
 
+## Hora de probar la memoria del asistente (In-Memory)
+
+Para apreciar realmente el valor de la persistencia, vamos a realizar pruebas en dos fases.
+
+### Fase 1: Probando la Memoria Volátil (con InMemoryChatMemory)
+
+Antes de cambiar a la memoria persistente, primero vamos a verificar el comportamiento de la implementación en memoria que configuraste en la Parte 2.
+
+1. Asegúrate de que tu `ChatConfig` esté proveyendo el bean de `InMemoryChatMemory`. Si ya lo cambiaste, vuelve a ponerlo temporalmente.
+
+```java
+// En ChatConfig.java
+@Bean
+public ChatMemory chatMemory() {
+    return new InMemoryChatMemory();
+}
+```
+
+2. Ejecuta la aplicación.
+3. Abre tu navegador y haz una pregunta para establecer contexto: `http://localhost:8080/ai/chat?message=Mi nombre es Fulano`.
+3. Haz una pregunta inicial: `http://localhost:8080/ai/chat?message=Mi nombre es Fulano. ¿Puedes decirme qué es Spring AI`.
+4. En la misma pestaña (misma sesión), pregunta: `http://localhost:8080/ai/chat?message=¿Recuerdas mi nombre?`
+    - __Resultado esperado__: El asistente responderá correctamente "Fulano", demostrando que la memoria funciona dentro de la sesión de la aplicación.
+
+5. Reinicia tu aplicación Spring Boot.
+6. Una vez reiniciada, en la misma pestaña del navegador, vuelve a preguntar: `http://localhost:8080/ai/chat?message=¿Recuerdas mi nombre?`
+    - __Resultado esperado__: El asistente NO recordará tu nombre. Esto demuestra la naturaleza volátil de `InMemoryChatMemory`: la memoria se borra cuando la aplicación se detiene.
+
+
+
+
+
 ### Parte 3 - Implementando Memoria Persistente con PostgreSQL y JDBC
 
 La memoria en memoria es útil, pero se pierde al reiniciar. Para una aplicación real, necesitamos persistencia. Ya que tienes PostgreSQL configurado, vamos a utilizarlo para almacenar el historial de chat. Gracias a la autoconfiguración de Spring AI, este cambio es sorprendentemente fácil.
@@ -212,52 +244,7 @@ Modifica el bean de `ChatMemory` en tu `ChatConfig` para que Spring inyecte el `
 
 Con este cambio, tu aplicación ahora persistirá todo el historial de chat en tu base de datos PostgreSQL. Al iniciar, Spring AI creará automáticamente la tabla chat_memory si no existe.
 
-### Parte 4 - Mejorando el Prompt del Sistema para la Conversación
-
-Un buen prompt de sistema es aún más importante en una conversación. Vamos a darle a nuestro asistente una personalidad más definida.
-
-Actualiza `src/main/resources/system-prompt.md`:
-
-```markdown
-Eres un asistente de IA amigable y servicial llamado "JConfDominicana Assistant".
-Tu propósito es ayudar a los usuarios con sus preguntas sobre programación, tecnología y desarrollo de software.
-Responde de manera clara y concisa. Mantén un tono profesional pero cercano.
-Habla siempre en español.
-/no_think
-```
-
-## Solución
-
-TODO
-
-## Hora de probar la memoria del asistente
-
-Para apreciar realmente el valor de la persistencia, vamos a realizar pruebas en dos fases.
-
-### Fase 1: Probando la Memoria Volátil (con InMemoryChatMemory)
-
-Antes de cambiar a la memoria persistente, primero vamos a verificar el comportamiento de la implementación en memoria que configuraste en la Parte 2.
-
-1. Asegúrate de que tu `ChatConfig` esté proveyendo el bean de `InMemoryChatMemory`. Si ya lo cambiaste, vuelve a ponerlo temporalmente.
-
-```java
-// En ChatConfig.java
-@Bean
-public ChatMemory chatMemory() {
-    return new InMemoryChatMemory();
-}
-```
-
-2. Ejecuta la aplicación.
-3. Abre tu navegador y haz una pregunta para establecer contexto: `http://localhost:8080/ai/chat?message=Mi nombre es Fulano`.
-3. Haz una pregunta inicial: `http://localhost:8080/ai/chat?message=Mi nombre es Fulano. ¿Puedes decirme qué es Spring AI`.
-4. En la misma pestaña (misma sesión), pregunta: `http://localhost:8080/ai/chat?message=¿Recuerdas mi nombre?`
-   - __Resultado esperado__: El asistente responderá correctamente "Fulano", demostrando que la memoria funciona dentro de la sesión de la aplicación.
-
-5. Reinicia tu aplicación Spring Boot.
-6. Una vez reiniciada, en la misma pestaña del navegador, vuelve a preguntar: `http://localhost:8080/ai/chat?message=¿Recuerdas mi nombre?`
-    - __Resultado esperado__: El asistente NO recordará tu nombre. Esto demuestra la naturaleza volátil de `InMemoryChatMemory`: la memoria se borra cuando la aplicación se detiene.
-
+## Hora de probar la memoria del asistente (Persistente)
 
 ### Fase 2: Probando la Memoria Persistente (con `JdbcChatMemory`)
 
@@ -277,7 +264,7 @@ public ChatMemory chatMemory(ChatMemoryRepository repository) {
 3. Abre tu navegador y haz una pregunta para establecer contexto: `http://localhost:8080/ai/chat?message=Mi nombre es Fulano. ¿Puedes decirme qué es Spring AI?`.
 4. En la misma pestaña, haz una pregunta de seguimiento que dependa del contexto: `http://localhost:8080/ai/chat?message=¿Podrías darme un ejemplo de código simple sobre eso?`
 5. Finalmente, prueba si recuerda tu nombre: `http://localhost:8080/ai/chat?message=¿Recuerdas cómo me llamo?`
-    - __Resultado esperado__: El asistente __recordará__ tu nombre. 
+    - __Resultado esperado__: El asistente __recordará__ tu nombre.
 
 6. Reinicia tu aplicación Spring Boot.
 7. Una vez reiniciada, en la misma pestaña del navegador, vuelve a preguntar: `http://localhost:8080/ai/chat?message=¿Recuerdas mi nombre?`
@@ -292,6 +279,24 @@ public ChatMemory chatMemory(ChatMemoryRepository repository) {
 SELECT * FROM chat_memory;
 ```
 Verás las filas que representan el historial de la conversación que acabas de tener.
+
+### Parte 4 - Mejorando el Prompt del Sistema para la Conversación
+
+Un buen prompt de sistema es aún más importante en una conversación. Vamos a darle a nuestro asistente una personalidad más definida.
+
+Actualiza `src/main/resources/system-prompt.md`:
+
+```markdown
+Eres un asistente de IA amigable y servicial llamado "JConfDominicana Assistant".
+Tu propósito es ayudar a los usuarios con sus preguntas sobre programación, tecnología y desarrollo de software.
+Responde de manera clara y concisa. Mantén un tono profesional pero cercano.
+Habla siempre en español.
+/no_think
+```
+
+## Solución
+
+TODO
 
 ## Conclusión
 
