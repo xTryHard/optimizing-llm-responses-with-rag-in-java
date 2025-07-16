@@ -121,15 +121,14 @@ public Stream<String> streamResponse(String message) {
 
 Este método es la pieza central para implementar RAG (Retrieval-Augmented Generation), lo cual haremos en un ejercicio posterior. Por ahora, para que nuestra clase `ChatAssistantService` compile correctamente, le daremos una implementación temporal.
 
-Esta implementación provisional ignorará el parámetro `context` y simplemente delegará la pregunta al método `streamResponse`. 
+Esta implementación simplemente delegará la pregunta al método `streamResponse`. 
 Añadiremos también un comentario TODO para recordarnos que debemos volver aquí y desarrollar la lógica completa de RAG.
 
 Dentro de tu clase `ChatAssistantService`, implementa el método `askQuestionWithContext` de la siguiente manera:
 ```java
 @Override
-public Stream<String> askQuestionWithContext(String context, String question) {
+public Stream<String> askQuestionWithContext(String question) {
     // TODO: Implementar la lógica de RAG en un futuro ejercicio.
-    // Por ahora, se ignora el contexto y se llama directamente al modelo.
     return this.streamResponse(question);
 }
 ```

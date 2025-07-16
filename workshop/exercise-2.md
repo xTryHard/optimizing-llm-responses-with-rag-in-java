@@ -27,7 +27,7 @@ Para que el asistente pueda recordar múltiples conversaciones con diferentes us
         String getResponse(String conversationId, String message);
         Stream<String> streamResponse(String conversationId, String message);
         Stream<String> askQuestion(String conversationId, String message, boolean stream);
-        Stream<String> askQuestionWithContext(String conversationId, String context, String question);
+        Stream<String> askQuestionWithContext(String conversationId, String question);
     }
 ```
 
