@@ -29,17 +29,16 @@ public interface ChatAssistant {
     Stream<String> streamResponse(String message);
 
     /**
-     * Sends a question to the LLM along with some context.
-     * The LLM is expected to use the provided context to answer the question.
+     * Sends a question to the LLM, it will retrieve context from vector store.
+     * The LLM is expected to use the retrieved context to answer the question.
      * This method is a fundamental building block for the workshop's goal of
      * implementing Retrieval-Augmented Generation (RAG).
      *
-     * @param context  The context information (e.g., from a document) the LLM should use.
      * @param question The user's question related to the context.
      * @return A {@link Stream} of strings. It emits chunks as they are generated, grounded with the provided context.
      *
      */
-    Stream<String> askQuestionWithContext(String context, String question);
+    Stream<String> askQuestionWithContext(String question);
 
     /**
      * Provides a unified way to ask a question, supporting both synchronous (single response)
