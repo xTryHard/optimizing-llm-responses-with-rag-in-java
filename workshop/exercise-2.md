@@ -177,8 +177,7 @@ public ChatMemory chatMemory() {
 ```
 
 2. Ejecuta la aplicación.
-3. Abre tu navegador y haz una pregunta para establecer contexto: `http://localhost:8080/ai/chat?message=Mi nombre es Fulano`.
-3. Haz una pregunta inicial: `http://localhost:8080/ai/chat?message=Mi nombre es Fulano. ¿Puedes decirme qué es Spring AI`.
+3.  Abre tu navegador y haz una pregunta inicial: `http://localhost:8080/ai/chat?message=Mi nombre es Fulano. ¿Puedes decirme qué es Spring AI?`.
 4. En la misma pestaña (misma sesión), pregunta: `http://localhost:8080/ai/chat?message=¿Recuerdas mi nombre?`
     - __Resultado esperado__: El asistente responderá correctamente "Fulano", demostrando que la memoria funciona dentro de la sesión de la aplicación.
 
