@@ -25,15 +25,23 @@ Escribe el constructor de la clase que creaste previamente `ChatAssistantService
 Asigna `this.chatClient` con el resultado de llamar `builder.defaultSystem(systemPrompt).build()`.
 
 ```java
+package com.theitdojo.optimizing_llm_responses_with_rag_in_java.services;
+
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
-private final ChatClient chatClient;
-
 @Service
-public ChatAssistantService(ChatClient.Builder builder, @Value("classpath:/system-prompt.md") Resource systemPrompt) {
-   this.chatClient = builder
-           .defaultSystem(systemPrompt)
-           .build();
+public class ChatAssistantService implements ChatAssistant {
+
+   private final ChatClient chatClient;
+
+   public ChatAssistantService(ChatClient.Builder builder, @Value("classpath:/system-prompt.md") Resource systemPrompt) {
+      this.chatClient = builder
+              .defaultSystem(systemPrompt)
+              .build();
+   }
 }
 ```
 
@@ -43,6 +51,7 @@ Actualiza el archivo `system-prompt.md` en la carpeta `src/main/resources` con e
 
 ```markdown
 Responde la pregunta lo más breve posible, en español.
+/no_think
 ```
 
 ### Parte 3 - Configurar el model desde `application.properties`
@@ -154,7 +163,8 @@ import java.util.stream.Stream;
 @RestController
 @RequestMapping("/ai")
 public class ChatController {
-
+    
+   Logger logger = LoggerFactory.getLogger(ChatController.class);
     private final ChatAssistant chatAssistant;
 
     public ChatController(ChatAssistant chatAssistant) {
@@ -179,12 +189,10 @@ public String chat(@RequestParam String message, @RequestParam(defaultValue = "f
     StringBuilder responseBuilder = new StringBuilder();
 
     responseStream.forEach(chunk -> {
-        System.out.print(chunk);
+        logger.info(chunk);
         responseBuilder.append(chunk);
     });
-
-    System.out.println();
-
+    
     return responseBuilder.toString();
 }
 ```
