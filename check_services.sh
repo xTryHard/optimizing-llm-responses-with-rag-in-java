@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ─── Configuration ──────────────────────────────────────────────────────────────
 PG_HOST="localhost"
-PG_PORT="5885"
+PG_PORT="5432"
 PG_USER="postgres"
 
 OLLAMA_HOST="localhost"
