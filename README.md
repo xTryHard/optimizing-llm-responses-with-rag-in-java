@@ -56,11 +56,7 @@ Estos comandos se pueden ejecutar tantas veces como sea necesario para completar
 ```
 
 Construir la aplicación
-```shell
-  mvn clean install
-```
+`./mvnw clean install`
 
 Ejecutar la aplicación
-```shell
-  mvn spring-boot:run
-```
+`./mvnw spring-boot:run`
