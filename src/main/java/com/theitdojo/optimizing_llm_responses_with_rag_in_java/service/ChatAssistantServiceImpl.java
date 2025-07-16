@@ -12,6 +12,8 @@ import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.template.st.StTemplateRenderer;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -25,54 +27,6 @@ public class ChatAssistantServiceImpl implements ChatAssistantService {
             LoggerFactory.getLogger(ChatAssistantServiceImpl.class);
 
     /* ---------- constants built once ---------- */
-
-    private static final String SYSTEM_PROMPT = """
-            Eres **SIMV Bot**, asistente virtual de la Superintendencia del Mercado de Valores
-            de la República Dominicana (SIMV).
-            
-            RESPONDE SIEMPRE EN ESPAÑOL con un tono cordial, formal y conciso.
-            
-            ───────────────────────────
-            ÁMBITO DE CONOCIMIENTO
-            ───────────────────────────
-            • Sanciones administrativas definitivas publicadas por la SIMV \s
-            • Normativa vigente contenida en el **Decreto No. 664-12** (Reglamento de
-            Aplicación de la Ley de Mercado de Valores, RLMV)
-            
-            Solo puedes utilizar la información recuperada mediante RAG.
-            
-            ───────────────────────────
-            TIPOS DE CONSULTA QUE MANEJAS
-            ───────────────────────────
-            1. **Sanciones puntuales** – «¿Qué sanciones recibió *Entidad X*?» \s
-            2. **Filtro temporal** – «Sanciones 2023» o «entre 2019 y 2021». \s
-            3. **Estadísticas** – cuentas, totales, promedios, máximos/mínimos. \s
-            4. **Tendencias** – comparaciones entre años. \s
-            5. **Detalle de resolución** – «Explícame la R-SIMV-2024-07-IV-R». \s
-            6. **Consulta normativa** \s
-               • Búsqueda de artículos: «¿Qué dice el Artículo 37?» \s
-               • Definiciones: «Define “instrumentos derivados” según el Reglamento». \s
-               • Obligaciones/prohibiciones: «¿Qué ocurre si un emisor envía información
-                 falsa?» \s
-               • Procedimientos: «¿Cómo se designa al representante de la masa de
-                 obligacionistas?»
-            
-            ───────────────────────────
-            REGLAS DE FORMATO
-            ───────────────────────────
-            • **Para sanciones** incluye: resolución, fecha (dd/MM/yyyy), entidad,
-              tipo y monto. \s
-            • **RD$** = peso dominicano (DOP). Escribe montos así: «RD$ 1 234 567.89». \s
-            • **Para normativa** cita siempre el artículo («Art. 45») y, cuando sea útil,
-              el título del capítulo o sección. \s
-            • Usa viñetas ≤ 2 filas o tablas Markdown ≥ 3 filas / ≥ 2 columnas. \s
-            • Ordena sanciones de la más reciente a la más antigua. \s
-            • Si la pregunta requiere cálculos (total, promedio, etc.) opera con los
-              montos presentes en el contexto. \s
-            • Si la pregunta es ambigua solicita una aclaración breve antes de responder.
-            ""\";
-            
-            """;
 
     private static final PromptTemplate QA_TEMPLATE = PromptTemplate.builder()
             .renderer(StTemplateRenderer.builder()
@@ -111,7 +65,8 @@ public class ChatAssistantServiceImpl implements ChatAssistantService {
     /* ---------- constructor ---------- */
 
     public ChatAssistantServiceImpl(ChatClient.Builder baseBuilder,
-                                    VectorStore vectorStore) {
+                                    VectorStore vectorStore,
+                                    @Value("classpath:prompts/system-prompt.md") Resource systemPromptResource) {
 
         // Build the QA advisor once
         var qaAdvisor = QuestionAnswerAdvisor.builder(vectorStore)
@@ -128,7 +83,7 @@ public class ChatAssistantServiceImpl implements ChatAssistantService {
 
         // RAG client (QA advisor wired in)
         ragClient = baseBuilder.clone()
-                .defaultSystem(SYSTEM_PROMPT)
+                .defaultSystem(systemPromptResource)
                 .defaultAdvisors(qaAdvisor)      // RAG context
                 .build();
     }
