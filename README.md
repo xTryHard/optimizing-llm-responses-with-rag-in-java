@@ -4,7 +4,7 @@ Los modelos de lenguaje de gran tamaño (LLMs, por sus siglas en inglés de “L
 En este taller práctico aprenderás cómo potenciar tu chatbot, basado en un LLM, mediante Generación Aumentada por Recuperación (RAG - Retrieval Augmented Generation) utilizando Java y SpringAI.
 
 
-#s Configura tu entorno local
+# Configura tu entorno local
 
 Aquí están las instrucciones para ejecutar el taller localmente.
 
