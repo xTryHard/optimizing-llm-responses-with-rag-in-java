@@ -35,7 +35,7 @@ public class ChatAssistantService implements ChatAssistant {
     }
 
     @Override
-    public Stream<String> askQuestionWithContext(String context, String question) {
+    public Stream<String> askQuestionWithContext(String question) {
         // TODO: Implementar la lógica de RAG en un futuro ejercicio.
         // Por ahora, se ignora el contexto y se llama directamente al modelo.
         return this.streamResponse(question);
