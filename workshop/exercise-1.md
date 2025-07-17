@@ -121,15 +121,14 @@ public Stream<String> streamResponse(String message) {
 
 Este método es la pieza central para implementar RAG (Retrieval-Augmented Generation), lo cual haremos en un ejercicio posterior. Por ahora, para que nuestra clase `ChatAssistantService` compile correctamente, le daremos una implementación temporal.
 
-Esta implementación provisional ignorará el parámetro `context` y simplemente delegará la pregunta al método `streamResponse`. 
+Esta implementación simplemente delegará la pregunta al método `streamResponse`. 
 Añadiremos también un comentario TODO para recordarnos que debemos volver aquí y desarrollar la lógica completa de RAG.
 
 Dentro de tu clase `ChatAssistantService`, implementa el método `askQuestionWithContext` de la siguiente manera:
 ```java
 @Override
-public Stream<String> askQuestionWithContext(String context, String question) {
+public Stream<String> askQuestionWithContext(String question) {
     // TODO: Implementar la lógica de RAG en un futuro ejercicio.
-    // Por ahora, se ignora el contexto y se llama directamente al modelo.
     return this.streamResponse(question);
 }
 ```
@@ -234,3 +233,5 @@ En este primer ejercicio, hemos sentado las bases para interactuar con un LLM de
 - __Integración Sencilla__: Al exponer una API estándar, Ollama se integra sin problemas con Spring AI, convirtiéndose en la opción perfecta para prototipar y desarrollar nuestras aplicaciones de IA.
 
 ### Próximo ejercicio
+
+[Ejercicio 2: Memoria Conversacional (Chat Memory)](./exercise-2.md)
