@@ -35,10 +35,9 @@ Para que el asistente pueda recordar múltiples conversaciones con diferentes us
 
 Modificaremos nuestro `ChatController` para que inyecte el objeto `HttpSession` de Spring. Usaremos el ID de la sesión (`session.getId()`) como el `conversationId` que pasaremos a nuestro servicio.
 
-Nota: estamos usando `spring-session-jdbc` para persistir el id de la sesion.
 ```java
-    // src/main/java/com/theitdojo/optimizing_llm_responses_with_rag_in_java/controllers/ChatController.java
-import jakarta.servlet.http.HttpSession; // ¡Asegúrate de importar HttpSession!
+// src/main/java/com/theitdojo/optimizing_llm_responses_with_rag_in_java/controllers/ChatController.java
+import jakarta.servlet.http.HttpSession; // Asegúrate de importar HttpSession
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 // ... otras importaciones
