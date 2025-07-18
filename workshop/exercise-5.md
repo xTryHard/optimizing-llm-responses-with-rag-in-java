@@ -143,7 +143,7 @@ TIPO DE SANCIÓN: %s
     @Override public String getStrategyName() { return STRATEGY_NAME; }
 }
 ```
-Esta estrategia lee el CSV de sanciones con OpenCSV.
+Esta estrategia lee el CSV de sanciones ([sanciones.csv](../src/main/resources/simv/sanciones.csv)) con OpenCSV.
 •	Salta la cabecera y recorre cada fila.
 •	Separa “RESOLUCIÓN” y “FECHA” (columna 0) usando split("\\s*\\n\\s*", 2).
 •	Construye un bloque de texto legible para el LLM y crea un Document por fila.
@@ -285,32 +285,40 @@ En `ChatAssistantService` inyecta el `VectorStore` y añade el advisor.
 
 ```java
 @Service
-public class ChatAssistantService {
-    private final ChatClient chatClient;
+public class ChatAssistantService implements ChatAssistant {
+   private final ChatClient chatClient;
+   private final String glossaryContext;
+   private final PromptTemplate promptTemplate;
 
-    public ChatAssistantService(ChatClient.Builder builder,
-                                VectorStore vectorStore,
-                                @Value("classpath:prompts/system-prompt.md") Resource systemPrompt,
-                                @Value("classpath:prompts/rag-prompt-template.st") Resource ragResource,
-                                ChatMemory chatMemory) {
+   public ChatAssistantService(ChatClient.Builder builder,
+                               @Value("classpath:/system-prompt.md") Resource systemPrompt,
+                               ChatMemory chatMemory,
+                               @Value("classpath:/simv/glosario.txt") Resource glossaryResource,
+                               @Value("classpath:/rag-prompt-template.st") Resource ragPromptTemplate,
+                               VectorStore vectorStore) throws IOException {
 
-        PromptTemplate qaTemplate = PromptTemplate.builder()
-                .renderer(StTemplateRenderer.builder().startDelimiterToken('<').endDelimiterToken('>').build())
-                .resource(ragResource)
-                .build();
+      PromptTemplate qaTemplate = PromptTemplate.builder()
+              .renderer(StTemplateRenderer.builder().startDelimiterToken('<').endDelimiterToken('>').build())
+              .resource(ragPromptTemplate)
+              .build();
+      
+      QuestionAnswerAdvisor qaAdvisor = QuestionAnswerAdvisor.builder(vectorStore)
+              .promptTemplate(qaTemplate)
+              .searchRequest(SearchRequest.builder().similarityThreshold(0.7f).topK(4).build())
+              .build();
+      
+      this.chatClient = builder
+              .defaultSystem(systemPrompt)
+              .defaultAdvisors(
+                      MessageChatMemoryAdvisor.builder(chatMemory).build(), 
+                      qaAdvisor
+              )
+              .build();
 
-        QuestionAnswerAdvisor qaAdvisor = QuestionAnswerAdvisor.builder(vectorStore)
-                .promptTemplate(qaTemplate)
-                .searchRequest(SearchRequest.builder().similarityThreshold(0.7f).topK(4).build())
-                .build();
-
-        this.chatClient = builder
-                .defaultSystem(systemPrompt)
-                .defaultAdvisors(
-                        MessageChatMemoryAdvisor.builder(chatMemory).build(),
-                        qaAdvisor)
-                .build();
-    }
+      this.promptTemplate = new PromptTemplate(ragPromptTemplate);
+      this.glossaryContext = glossaryResource.getContentAsString(StandardCharsets.UTF_8);
+   }
+   // Resto de la clase
 }
 ```
 
