@@ -102,7 +102,8 @@ Con el backend y el frontend listos y conectados, es hora de ver nuestro chatbot
 
 ## Solución
 
-TODO
+[Ir a la siguiente rama de git - jconfdominicana2025-exercise-3-solution](https://github.com/xTryHard/optimizing-llm-responses-with-rag-in-java/tree/jconfdominicana2025-exercise-3-solution
+)
 
 ## Conclusión
 
