@@ -33,11 +33,10 @@ Para que el asistente pueda recordar múltiples conversaciones con diferentes us
 
 2 __Actualizar el Controlador__ `ChatController`
 
-Modificaremos nuestro `ChatController` para que inyecte el objeto `HttpSession` de Spring. Usaremos el ID de la sesión (`session.getId()`) como el `conversationId` que pasaremos a nuestro servicio.
+Vamos a colocar un valor fijo como identificador de la conversación, esto simula la estrategia de identificación utilizada en tu propio sistema.
 
 ```java
 // src/main/java/com/theitdojo/optimizing_llm_responses_with_rag_in_java/controllers/ChatController.java
-import jakarta.servlet.http.HttpSession; // Asegúrate de importar HttpSession
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 // ... otras importaciones
@@ -54,9 +53,9 @@ public class ChatController {
     }
 
     @GetMapping("/chat")
-    public String chat(HttpSession session, @RequestParam String message, @RequestParam(defaultValue = "false") boolean stream) {
-        // Usamos el ID de la sesión como ID de la conversación
-        Stream<String> responseStream = chatAssistant.askQuestion(session.getId(), message, stream);
+    public String chat(@RequestParam String message, @RequestParam(defaultValue = "false") boolean stream) {
+        // El valor fijo en CONVERSATION_ID simula el identificador utilizado en tu sistema para tus usuarios.
+        Stream<String> responseStream = chatAssistant.askQuestion("CONVERSATION_ID", message, stream);
 
         StringBuilder responseBuilder = new StringBuilder();
 
