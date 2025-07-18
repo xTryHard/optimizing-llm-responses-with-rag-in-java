@@ -332,6 +332,13 @@ public class ChatAssistantService implements ChatAssistant {
 
 `QuestionAnswerAdvisor` – combina `VectorStore` + `PromptTemplate` + `SearchRequest`.
 
+En el `SearchRequest`:
+- `similarityThreshold(0.7f)` - Indica que solo se traerán al prompt los fragmentos cuyo embedding sea al menos 70 % parecido al de la consulta, medido con cosine similarity, que compara la orientación de los vectores de texto para saber qué tan “alineados” están sus significados.
+- `topK(4)` - Pide como máximo los 4 documentos más parecidos que superen el umbral fijado.
+
+> SearchRequest usa cosine similarity salvo que especifiques otra.
+
+
 ### 5. 2 En `ChatAssistantService`, actualiza `askQuestionWithContext`.
 
 ```java
@@ -444,6 +451,7 @@ Estos archivos se cargan automáticamente gracias a las anotaciones `@Value` que
    - **Sanciones**: «¿Qué sanciones ha recibido la entidad Tivalsa, S.A.?».
    - **Caso negativo**: «¿Qué sanciones ha recibido la entidad Super‑Random, S.A.?» (el bot debe indicar que no posee esa información).
 
+- Nota: en tu `application.properties`, deshabilita los _Ingestion Strategies_ seteando `app.ingestion.enabled=false`. Esto evitará que, al reiniciar la aplicación, el _Ingestion Runner_ se ejecute de nuevo, lo que duplicaría los embeddings
 ---
 
 ## Solución
