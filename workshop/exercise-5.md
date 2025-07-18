@@ -15,12 +15,16 @@ En este ejercicio pasarás a la **forma correcta** de hacer RAG:
 
 ### 1· Requisitos previos
 
-**Dependencias Maven**
+**Dependencias Maven - pom.xml**
 
 ```xml
 <dependency>
   <groupId>org.springframework.ai</groupId>
   <artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
+</dependency>
+<dependency>
+<groupId>org.springframework.ai</groupId>
+<artifactId>spring-ai-pdf-document-reader</artifactId>
 </dependency>
 <dependency>
   <groupId>com.opencsv</groupId>
