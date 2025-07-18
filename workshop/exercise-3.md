@@ -73,8 +73,7 @@ La nueva `ChatView` de Vaadin está diseñada para consumir un `Flux<String>` de
         // TODO: Implementar la lógica de RAG en un futuro ejercicio.
         // Cambiamos a Flux para soportar el streaming reactivo hacia la UI de Vaadin.
         return this.chatClient.prompt()
-                .chatReference(conversationId)
-                .chatMemory(this.chatMemory)
+                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .user(question)
                 .stream()
                 .content();
