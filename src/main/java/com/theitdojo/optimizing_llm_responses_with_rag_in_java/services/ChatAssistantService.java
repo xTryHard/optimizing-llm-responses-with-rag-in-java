@@ -32,8 +32,7 @@ public class ChatAssistantService implements ChatAssistant {
 
     @Override
     public Stream<String> askQuestionWithContext(String question) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'askQuestionWithContext'");
+        return this.streamResponse(question);
     }
 
 }
