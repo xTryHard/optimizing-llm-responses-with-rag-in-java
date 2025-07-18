@@ -168,10 +168,11 @@ public class PDFIngestionStrategy implements IngestionStrategy {
     @Override public String getStrategyName() { return STRATEGY_NAME; }
 }
 ```
-Esta estrategia usa PagePdfDocumentReader para convertir cada página del PDF en un Document.
-•	Ideal para documentos largos como el Decreto 664-12: no necesitas trocear manualmente.
-•	El lector preserva saltos de línea y columnas mejor que un extractor plano.
-•	Registra cuántas páginas se convirtieron para verificar que el PDF no está vacío.
+Esta estrategia usa PagePdfDocumentReader para convertir cada página del PDF en un Document:
+- Ideal para documentos largos como el Decreto 664-12: no necesitas trocear manualmente.
+- El lector preserva saltos de línea y columnas mejor que un extractor plano.
+- Registra cuántas páginas se convirtieron para verificar que el PDF no está vacío.
+
 Beneficio: páginas separadas → contexto compacto y relevante durante la búsqueda semántica.
 
 ## 4 · `DataIngestionRunner`
