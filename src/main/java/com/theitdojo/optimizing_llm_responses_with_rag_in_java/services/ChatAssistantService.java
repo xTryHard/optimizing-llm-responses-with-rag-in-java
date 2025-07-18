@@ -23,8 +23,11 @@ public class ChatAssistantService implements ChatAssistant {
 
     @Override
     public Stream<String> streamResponse(String message) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'streamResponse'");
+        return chatClient.prompt()
+                .user(message)
+                .stream()
+                .content()
+                .toStream();
     }
 
     @Override
