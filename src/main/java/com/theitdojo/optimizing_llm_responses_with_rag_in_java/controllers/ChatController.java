@@ -23,7 +23,7 @@ public class ChatController {
 
     @GetMapping("/chat")
     public String chat(@RequestParam String message, @RequestParam(defaultValue = "false") boolean stream) {
-        Stream<String> responseStream = chatAssistant.askQuestion(message, stream);
+        Stream<String> responseStream = chatAssistant.askQuestion("CONVERSATION_ID", message, stream);
 
         StringBuilder responseBuilder = new StringBuilder();
 
