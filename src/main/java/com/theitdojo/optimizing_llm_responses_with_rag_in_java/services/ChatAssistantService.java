@@ -6,6 +6,7 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.util.stream.Stream;
 
@@ -42,14 +43,13 @@ public class ChatAssistantService implements ChatAssistant {
     }
 
     @Override
-    public Stream<String> askQuestionWithContext(String conversationId, String question) {
+    public Flux<String> askQuestionWithContext(String conversationId, String question) {
         // TODO: Implementar la lógica de RAG en un futuro ejercicio.
         // Por ahora, se ignora el contexto y se llama directamente al modelo.
         return chatClient.prompt()
                 .user(question)
                 .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .stream()
-                .content()
-                .toStream();
+                .content();
     }
 }

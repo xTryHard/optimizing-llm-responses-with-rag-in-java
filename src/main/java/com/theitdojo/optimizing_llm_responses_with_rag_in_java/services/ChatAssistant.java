@@ -1,5 +1,7 @@
 package com.theitdojo.optimizing_llm_responses_with_rag_in_java.services;
 
+import reactor.core.publisher.Flux;
+
 import java.util.stream.Stream;
 
 /**
@@ -38,7 +40,7 @@ public interface ChatAssistant {
      * @return A {@link Stream} of strings. It emits chunks as they are generated, grounded with the provided context.
      *
      */
-    Stream<String> askQuestionWithContext(String conversationId, String question);
+    Flux<String> askQuestionWithContext(String conversationId, String question);
 
     /**
      * Provides a unified way to ask a question, supporting both synchronous (single response)
