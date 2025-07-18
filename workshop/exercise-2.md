@@ -33,10 +33,10 @@ Para que el asistente pueda recordar múltiples conversaciones con diferentes us
 
 2 __Actualizar el Controlador__ `ChatController`
 
-Modificaremos nuestro `ChatController` para que inyecte el objeto `HttpSession` de Spring. Usaremos el ID de la sesión (`session.getId()`) como el `conversationId` que pasaremos a nuestro servicio.
+Vamos a colocar un valor fijo como identificador de la conversación, esto simula la estrategia de identificación utilizada en tu propio sistema.
+
 ```java
-    // src/main/java/com/theitdojo/optimizing_llm_responses_with_rag_in_java/controllers/ChatController.java
-import jakarta.servlet.http.HttpSession; // ¡Asegúrate de importar HttpSession!
+// src/main/java/com/theitdojo/optimizing_llm_responses_with_rag_in_java/controllers/ChatController.java
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 // ... otras importaciones
@@ -53,9 +53,9 @@ public class ChatController {
     }
 
     @GetMapping("/chat")
-    public String chat(HttpSession session, @RequestParam String message, @RequestParam(defaultValue = "false") boolean stream) {
-        // Usamos el ID de la sesión como ID de la conversación
-        Stream<String> responseStream = chatAssistant.askQuestion(session.getId(), message, stream);
+    public String chat(@RequestParam String message, @RequestParam(defaultValue = "false") boolean stream) {
+        // El valor fijo en CONVERSATION_ID simula el identificador utilizado en tu sistema para tus usuarios.
+        Stream<String> responseStream = chatAssistant.askQuestion("CONVERSATION_ID", message, stream);
 
         StringBuilder responseBuilder = new StringBuilder();
 
@@ -71,65 +71,48 @@ public class ChatController {
 
 ### Parte 2 - Implementando ChatMemory en Memoria (In-Memory)
 
-Comenzaremos con la implementación más simple: `InMemoryChatMemory`.
+Registraremos un `MessageChatMemoryAdvisor`, primero agregamos las siguientes importaciones:
+
+```java
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
+```
 
 1. Actualizar `ChatAssistantService`
 
-Modifica el constructor de `ChatAssistantService` para que también inyecte un bean de `ChatMemory`. Luego, configura el `ChatClient.Builder` para que use esta memoria por defecto.
+Modifica el constructor de `ChatAssistantService` para que también inyecte un bean de `ChatMemory`. Luego, agregamos un advisor predeterminado desde `MessageChatMemoryAdvisor.builder()`
 
 ```java
     // src/main/java/com/theitdojo/optimizing_llm_responses_with_rag_in_java/services/ChatAssistantService.java
-    import org.springframework.ai.chat.memory.ChatMemory;
-    // ...
 
-    @Service
-    public class ChatAssistantService implements ChatAssistant {
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
+// ...
 
-       private final ChatClient chatClient;
-       private final ChatMemory chatMemory;
+@Service
+public class ChatAssistantService implements ChatAssistant {
 
-       public ChatAssistantService(ChatClient.Builder builder,
-                                   @Value("classpath:/system-prompt.md") Resource systemPrompt,
-                                   ChatMemory chatMemory) { // Inyectar ChatMemory
-          this.chatMemory = chatMemory;
-          this.chatClient = builder
-                  .defaultSystem(systemPrompt)
-                  .build();
-       }
-       // ... El resto de la clase
+    private final ChatClient chatClient;
+    private final ChatMemory chatMemory;
+
+    public ChatAssistantService(ChatClient.Builder builder,
+                                @Value("classpath:/system-prompt.md") Resource systemPrompt,
+                                ChatMemory chatMemory) {
+        this.chatMemory = chatMemory;
+        this.chatClient = builder
+                .defaultSystem(systemPrompt)
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .build();
     }
-    
+    // ... El resto de la clase
+}
+
 ```
-2. Crear el Bean de `ChatMemory`
+2. Especificar el ID de la Conversación para el Advisor
 
-Por defecto, Spring AI no crea un bean de _ChatMemory_. Vamos a crear una clase de configuración para proveer una instancia de _InMemoryChatMemory_.
+Aunque ya registramos un `advisor` de memoria en el constructor, este no sabe mágicamente a qué conversación pertenece cada nueva solicitud. Por ello, en cada método que interactúa con el `ChatClient`, debemos pasar explícitamente el `conversationId`. Esto le indica al `MessageChatMemoryAdvisor` qué historial de conversación debe cargar y actualizar para esta interacción en particular.
 
-Crea un nuevo paquete `config` y dentro una clase `ChatConfig`.
-
-```java
-    // src/main/java/com/theitdojo/optimizing_llm_responses_with_rag_in_java/config/ChatConfig.java
-    package com.theitdojo.optimizing_llm_responses_with_rag_in_java.config;
-
-    import org.springframework.ai.chat.memory.ChatMemory;
-    import org.springframework.ai.chat.memory.InMemoryChatMemory;
-    import org.springframework.context.annotation.Bean;
-    import org.springframework.context.annotation.Configuration;
-
-    @Configuration
-    public class ChatConfig {
-
-        @Bean
-        public ChatMemory chatMemory() {
-            return new InMemoryChatMemory();
-        }
-    }
-```
-
-3. Usar la Memoria en las Llamadas al LLM
-
-Ahora, actualiza los métodos de `ChatAssistantService` para que utilicen el `conversationId` y la `chatMemory` en cada llamada. 
-
-Esto se hace encadenando `.chatReference(conversationId)` y `.chatMemory(chatMemory)` en la llamada al `prompt`. No olvides actualizar las firmas de los métodos para que coincidan con la interfaz.
+Ahora, actualicemos los métodos de ChatAssistantService para pasar este identificador:
 
 ```java
     // Dentro de ChatAssistantService.java
@@ -137,8 +120,7 @@ Esto se hace encadenando `.chatReference(conversationId)` y `.chatMemory(chatMem
     @Override
     public String getResponse(String conversationId, String message) {
         return this.chatClient.prompt()
-                .chatReference(conversationId) // Identifica la conversación
-                .chatMemory(this.chatMemory)   // Usa la memoria
+                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .user(message)
                 .call()
                 .content();
@@ -147,60 +129,81 @@ Esto se hace encadenando `.chatReference(conversationId)` y `.chatMemory(chatMem
     @Override
     public Stream<String> streamResponse(String conversationId, String message) {
         return chatClient.prompt()
-                .chatReference(conversationId) // Identifica la conversación
-                .chatMemory(this.chatMemory)   // Usa la memoria
                 .user(message)
+                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .stream()
                 .content()
                 .toStream();
     }
     
-    // ... Asegúrate de actualizar también askQuestion y askQuestionWithContext
+
+    @Override
+    public Stream<String> askQuestionWithContext(String conversationId, String question) {
+        // TODO: Implementar la lógica de RAG en un futuro ejercicio.
+        return chatClient.prompt()
+                .user(question)
+                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
+                .stream()
+                .content()
+                .toStream();
+    }
 ```
 
-## Hora de probar la memoria del asistente (In-Memory)
-
-Para apreciar realmente el valor de la persistencia, vamos a realizar pruebas en dos fases.
-
-### Fase 1: Probando la Memoria Volátil (con InMemoryChatMemory)
+## Probando la Memoria Volátil (con MessageChatMemoryAdvisor)
 
 Antes de cambiar a la memoria persistente, primero vamos a verificar el comportamiento de la implementación en memoria que configuraste en la Parte 2.
 
-1. Asegúrate de que tu `ChatConfig` esté proveyendo el bean de `InMemoryChatMemory`. Si ya lo cambiaste, vuelve a ponerlo temporalmente.
-
-```java
-// En ChatConfig.java
-@Bean
-public ChatMemory chatMemory() {
-    return new InMemoryChatMemory();
-}
-```
-
-2. Ejecuta la aplicación.
-3.  Abre tu navegador y haz una pregunta inicial: `http://localhost:8080/ai/chat?message=Mi nombre es Fulano. ¿Puedes decirme qué es Spring AI?`.
-4. En la misma pestaña (misma sesión), pregunta: `http://localhost:8080/ai/chat?message=¿Recuerdas mi nombre?`
+1. Ejecuta la aplicación.
+2. Abre tu navegador y haz una pregunta inicial: `http://localhost:8080/ai/chat?message=Mi nombre es Fulano. ¿Puedes decirme qué es Spring AI?`.
+3. En la misma pestaña (misma sesión), pregunta: `http://localhost:8080/ai/chat?message=¿Cuál es mi nombre?, `
     - __Resultado esperado__: El asistente responderá correctamente "Fulano", demostrando que la memoria funciona dentro de la sesión de la aplicación.
 
-5. Reinicia tu aplicación Spring Boot.
-6. Una vez reiniciada, en la misma pestaña del navegador, vuelve a preguntar: `http://localhost:8080/ai/chat?message=¿Recuerdas mi nombre?`
+4. Reinicia tu aplicación Spring Boot.
+5. Una vez reiniciada, en la misma pestaña del navegador, vuelve a preguntar: `http://localhost:8080/ai/chat?message=¿Cuál es mi nombre?`
     - __Resultado esperado__: El asistente NO recordará tu nombre. Esto demuestra la naturaleza volátil de `InMemoryChatMemory`: la memoria se borra cuando la aplicación se detiene.
-
-
 
 
 
 ### Parte 3 - Implementando Memoria Persistente con PostgreSQL y JDBC
 
-La memoria en memoria es útil, pero se pierde al reiniciar. Para una aplicación real, necesitamos persistencia. Ya que tienes PostgreSQL configurado, vamos a utilizarlo para almacenar el historial de chat. Gracias a la autoconfiguración de Spring AI, este cambio es sorprendentemente fácil.
+Almacenar información en memoria es útil, pero se pierde al reiniciar. Para una aplicación real, necesitamos persistencia. `JdbcChatMemoryRepository` es una implementación que utiliza JDBC para guardar los mensajes en una base de datos relacional, ideal para aplicaciones que requieren que el historial de chat sobreviva a los reinicios.
 
-1. Verificar Dependencias
+1. Agregar dependencia `spring-ai-starter-model-chat-memory-repository-jdbc` 
 
-En tu `pom.xml`, asegúrate que se incluya:
+En tu `pom.xml` agrega la siguiente dependencia
 
+```xml
+<dependency>
+    <groupId>org.springframework.ai</groupId>
+    <artifactId>spring-ai-starter-model-chat-memory-repository-jdbc</artifactId>
+</dependency>
+```
+
+2. Verificar Dependencias
+
+En tu `pom.xml`, asegúrate de que las siguientes dependencias estén incluidas. La nueva dependencia clave aquí es  `spring-ai-starter-model-chat-memory-repository-jdbc`, que nos proporciona la autoconfiguración para la memoria de chat con JDBC.
+```xml
+<dependency>
+    <groupId>org.springframework.ai</groupId>
+    <artifactId>spring-ai-starter-model-chat-memory-repository-jdbc</artifactId>
+</dependency>
+        
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+
+<dependency>
+<groupId>org.postgresql</groupId>
+<artifactId>postgresql</artifactId>
+<scope>runtime</scope>
+</dependency>
+```
+- `spring-ai-starter-model-chat-memory-repository-jdbc`: Proporciona la autoconfiguración para `JdbcChatMemoryRepository`
 - `spring-boot-starter-data-jpa`: Que a su vez incluye `spring-boot-starter-jdbc`, necesario para `JdbcChatMemoryRepository`.
 - `postgresql`: El driver JDBC para conectarse a tu base de datos. 
 
-2. Verificar la Configuración de la Base de Datos
+3. Verificar la Configuración de la Base de Datos
 
 En tu `application.properties` asegúrate que se incluya:
 
@@ -211,62 +214,59 @@ En tu `application.properties` asegúrate que se incluya:
     spring.datasource.password=postgres
     spring.datasource.driver-class-name=org.postgresql.Driver
     spring.jpa.hibernate.ddl-auto=update
+    spring.ai.chat.memory.repository.jdbc.initialize-schema=always
 ```
+La propiedad `spring.ai.chat.memory.repository.jdbc.initialize-schema=always` le indica a Spring AI que cree la tabla spring_ai_chat_memory si no existe al arrancar.
 
-3. Aprovechar las bondades de la Autoconfiguración de Spring Boot 
+4. Configurar un Bean de `MessageWindowChatMemory`
 
-El siguiente paso es idéntico independientemente de la base de datos subyacente. Simplemente necesitamos declarar un bean `ChatMemory` que utilice el `ChatMemoryRepository` que Spring AI autoconfigura para nosotros al detectar un `DataSource`.
+Ahora, en lugar de una memoria simple, crearemos una `ChatMemory` más avanzada que solo considera las últimas interacciones. Esto se conoce como "memoria de ventana" (window memory) y es crucial para evitar enviar un historial de conversación demasiado largo al LLM, lo que consumiría muchos tokens y aumentaría los costos.
 
-Modifica el bean de `ChatMemory` en tu `ChatConfig` para que Spring inyecte el `JdbcChatMemoryRepository` autoconfigurado.
+Spring AI autoconfigura un bean `JdbcChatMemoryRepository` porque detecta el starter de JDBC y una `DataSource` activa. Simplemente lo inyectamos y lo usamos para construir nuestra `ChatMemory`.
 
+Crea un nuevo paquete `config` y, dentro, una clase `ChatConfig`.
 ```java
-    // src/main/java/com/theitdojo/optimizing_llm_responses_with_rag_in_java/config/ChatConfig.java
-    import org.springframework.ai.chat.memory.ChatMemory;
-    import org.springframework.ai.chat.memory.JdbcChatMemory; // Importar
-    import org.springframework.ai.chat.memory.ChatMemoryRepository; // Importar
-    import org.springframework.context.annotation.Bean;
-    import org.springframework.context.annotation.Configuration;
+// src/main/java/com/theitdojo/optimizing_llm_responses_with_rag_in_java/config/ChatConfig.java
+package com.theitdojo.optimizing_llm_responses_with_rag_in_java.config;
 
-    @Configuration
-    public class ChatConfig {
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.ChatMemoryRepository;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
-        // Spring AI autoconfigura un JdbcChatMemoryRepository porque ve
-        // spring-boot-starter-jdbc en el classpath y un DataSource configurado.
-        // Nosotros solo necesitamos crear el bean de ChatMemory que lo use.
-        @Bean
-        public ChatMemory chatMemory(ChatMemoryRepository repository) { // Inyectamos el repositorio autoconfigurado
-            return new JdbcChatMemory(repository);
-        }
+@Configuration
+public class ChatConfig {
+
+    /**
+     * Spring AI autoconfigura un JdbcChatMemoryRepository porque ve
+     * spring-ai-starter-model-chat-memory-repository-jdbc en el classpath y un DataSource configurado.
+     * Nosotros solo necesitamos inyectarlo y crear el bean de ChatMemory que lo use.
+     */
+    @Bean
+    public ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository) {
+        return MessageWindowChatMemory.builder()
+                .chatMemoryRepository(chatMemoryRepository)
+                .maxMessages(10) // Limita el historial a los últimos 10 mensajes
+                .build();
     }
-    
-```
-
-Con este cambio, tu aplicación ahora persistirá todo el historial de chat en tu base de datos PostgreSQL. Al iniciar, Spring AI creará automáticamente la tabla chat_memory si no existe.
-
-## Hora de probar la memoria del asistente (Persistente)
-
-### Fase 2: Probando la Memoria Persistente (con `JdbcChatMemory`)
-
-Ahora, volvamos a la configuración de la Parte 3 para ver la diferencia.
-
-1. Asegúrate de que tu `ChatConfig` esté proveyendo el bean de `JdbcChatMemory`. inyectando el `ChatMemoryRepository`.
-
-```java
-// En ChatConfig.java
-@Bean
-public ChatMemory chatMemory(ChatMemoryRepository repository) {
-    return new JdbcChatMemory(repository);
 }
 ```
 
-2. Ejecuta la aplicación.
-3. Abre tu navegador y haz una pregunta para establecer contexto: `http://localhost:8080/ai/chat?message=Mi nombre es Fulano. ¿Puedes decirme qué es Spring AI?`.
-4. En la misma pestaña, haz una pregunta de seguimiento que dependa del contexto: `http://localhost:8080/ai/chat?message=¿Podrías darme un ejemplo de código simple sobre eso?`
-5. Finalmente, prueba si recuerda tu nombre: `http://localhost:8080/ai/chat?message=¿Recuerdas cómo me llamo?`
+Con este cambio, tu aplicación ahora persistirá el historial de chat en PostgreSQL, pero solo enviará el contexto más reciente al LLM en cada solicitud, manteniendo las conversaciones eficientes y relevantes.
+
+## Hora de probar la memoria del asistente (Persistente)
+
+Ahora, volvamos a la configuración de la Parte 3 para ver la diferencia.
+
+1. Ejecuta la aplicación.
+2. Abre tu navegador y haz una pregunta para establecer contexto: `http://localhost:8080/ai/chat?message=Mi nombre es Fulano. ¿Puedes decirme qué es Spring AI?`.
+3. En la misma pestaña, haz una pregunta de seguimiento que dependa del contexto: `http://localhost:8080/ai/chat?message=¿Podrías darme un ejemplo de código simple sobre eso?`
+4. Finalmente, prueba si recuerda tu nombre: `http://localhost:8080/ai/chat?message=¿Recuerdas cómo me llamo?`
     - __Resultado esperado__: El asistente __recordará__ tu nombre.
 
-6. Reinicia tu aplicación Spring Boot.
-7. Una vez reiniciada, en la misma pestaña del navegador, vuelve a preguntar: `http://localhost:8080/ai/chat?message=¿Recuerdas mi nombre?`
+5. Reinicia tu aplicación Spring Boot.
+6. Una vez reiniciada, en la misma pestaña del navegador, vuelve a preguntar: `http://localhost:8080/ai/chat?message=¿Recuerdas mi nombre?`
     - __Resultado esperado__: El asistente __SÍ__ recordará tu nombre. La conversación sobrevivió al reinicio de la aplicación gracias a la persistencia en la base de datos PostgreSQL.
 
 #### Verificando la Persistencia en la Base de Datos
@@ -275,7 +275,7 @@ public ChatMemory chatMemory(ChatMemoryRepository repository) {
 2. Ejecuta la siguiente consulta SQL:
 
 ```sql
-SELECT * FROM chat_memory;
+SELECT * FROM spring_ai_chat_memory;
 ```
 Verás las filas que representan el historial de la conversación que acabas de tener.
 
@@ -293,9 +293,13 @@ Habla siempre en español.
 /no_think
 ```
 
+Luego de actualizar el `system-prompt.md` si deseas puedes volver a ejecutar los pasos anteriores en la sección __Hora de probar la memoria del asistente (Persistente)__.
+Esto no es estrictamente necesario, vamos a poder probar esto y otras funcionalidades en los siguientes ejercicios.
+
+
 ## Solución
 
-TODO
+[Ir a la siguiente rama de git - jconfdominicana2025-exercise-2-solution](https://github.com/xTryHard/optimizing-llm-responses-with-rag-in-java/tree/jconfdominicana2025-exercise-2-solution)
 
 ## Conclusión
 
@@ -309,9 +313,10 @@ En este ejercicio, hemos dado un paso crucial para transformar nuestro asistente
 
 ### Cómo nos ayudó Spring AI
 
--   **Abstracción `ChatMemory`**: Spring AI nos ha facilitado enormemente la tarea con su abstracción `ChatMemory`. En lugar de implementar la lógica de almacenamiento y recuperación desde cero, simplemente utilizamos sus implementaciones listas para usar.
+-   **Abstracción `ChatMemory`**: La integración de la memoria en nuestras llamadas al `ChatClient` fue increíblemente sencilla. Al configurar un `MessageChatMemoryAdvisor` por defecto y luego especificar el `conversationId` en cada llamada con el método `.advisors()`, mantuvimos nuestro código limpio y legible.
 -   **API Fluida e Integrada**: La integración de la memoria en nuestras llamadas al `ChatClient` fue increíblemente sencilla gracias a los métodos `.chatReference()` y `.chatMemory()`, manteniendo nuestro código limpio y legible.
 -   **Bondades de la Autoconfiguración**: El cambio de una memoria volátil a una persistente con una base de datos PostgreSQL fue sorprendentemente simple. Gracias a la autoconfiguración de Spring Boot, Spring AI detectó nuestra configuración de base de datos y proveyó automáticamente el `JdbcChatMemoryRepository`, demostrando el poder del ecosistema de Spring para reducir el código repetitivo.
 
 ### Próximo ejercicio
-    
+
+[Ejercicio 3: Interfaz de Usuario (UI) Reactiva con Vaadin](./exercise-3.md)

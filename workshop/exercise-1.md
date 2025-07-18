@@ -198,7 +198,8 @@ public String chat(@RequestParam String message, @RequestParam(defaultValue = "f
 
 ## Solución
 
-TODO
+[Ir a la siguiente rama de git - jconfdominicana2025-exercise-1-solution](https://github.com/xTryHard/optimizing-llm-responses-with-rag-in-java/tree/jconfdominicana2025-exercise-1-solution)
+
 
 ## Hora de probar tu primer prompt
 

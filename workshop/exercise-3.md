@@ -73,8 +73,7 @@ La nueva `ChatView` de Vaadin está diseñada para consumir un `Flux<String>` de
         // TODO: Implementar la lógica de RAG en un futuro ejercicio.
         // Cambiamos a Flux para soportar el streaming reactivo hacia la UI de Vaadin.
         return this.chatClient.prompt()
-                .chatReference(conversationId)
-                .chatMemory(this.chatMemory)
+                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .user(question)
                 .stream()
                 .content();
@@ -103,7 +102,8 @@ Con el backend y el frontend listos y conectados, es hora de ver nuestro chatbot
 
 ## Solución
 
-TODO
+[Ir a la siguiente rama de git - jconfdominicana2025-exercise-3-solution](https://github.com/xTryHard/optimizing-llm-responses-with-rag-in-java/tree/jconfdominicana2025-exercise-3-solution
+)
 
 ## Conclusión
 
