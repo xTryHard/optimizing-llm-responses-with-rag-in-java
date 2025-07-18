@@ -31,6 +31,10 @@ En este ejercicio pasarás a la **forma correcta** de hacer RAG:
   <artifactId>opencsv</artifactId>
   <version>5.11.2</version>
 </dependency>
+<dependency>
+  <groupId>org.springframework.ai</groupId>
+  <artifactId>spring-ai-advisors-vector-store</artifactId>
+</dependency>
 ```
 
 **application.properties**
