@@ -11,6 +11,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.PreserveOnRefresh;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import com.vaadin.flow.theme.lumo.LumoUtility.Display;
@@ -29,6 +30,7 @@ import java.util.UUID;
 
 @PageTitle("Asistente Financiero Inteligente 🤖 🇩🇴")
 @Route("")
+@PreserveOnRefresh
 @Menu(order = 0, icon = LineAwesomeIconUrl.COMMENTS)
 public class ChatView extends HorizontalLayout {
 
@@ -49,14 +51,15 @@ public class ChatView extends HorizontalLayout {
     private final ChatAssistantService chatAssistantService;
 
     public ChatView(ChatAssistantService chatAssistantService) {
-        this.conversationId = UUID.randomUUID().toString();
+        // El valor fijo en USER_CONVERSATION_ID simula el identificador utilizado en tu sistema para tus usuarios.
+        humanUserInfo = new UserInfo("USER_CONVERSATION_ID", "Usuario");
+        this.conversationId = humanUserInfo.getId();
         logger.info("ChatView initialized with conversationId: {}", this.conversationId);
         this.chatAssistantService = chatAssistantService;
 
         addClassNames("chat-view", Width.FULL, Display.FLEX, Flex.AUTO);
         setSpacing(false);
 
-        humanUserInfo = new UserInfo(UUID.randomUUID().toString(), "Usuario");
 
         messageList = new MessageList();
         messageList.setMarkdown(true);
