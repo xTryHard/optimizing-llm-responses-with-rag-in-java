@@ -247,7 +247,7 @@ public class ChatConfig {
     public ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository) {
         return MessageWindowChatMemory.builder()
                 .chatMemoryRepository(chatMemoryRepository)
-                .maxMessages(5) // Limita el historial a los últimos 5 mensajes
+                .maxMessages(10) // Limita el historial a los últimos 10 mensajes
                 .build();
     }
 }
@@ -293,9 +293,13 @@ Habla siempre en español.
 /no_think
 ```
 
+Luego de actualizar el `system-prompt.md` si deseas puedes volver a ejecutar los pasos anteriores en la sección __Hora de probar la memoria del asistente (Persistente)__.
+Esto no es estrictamente necesario, vamos a poder probar esto y otras funcionalidades en los siguientes ejercicios.
+
+
 ## Solución
 
-TODO
+[Ir a la siguiente rama de git - jconfdominicana2025-exercise-2-solution](https://github.com/xTryHard/optimizing-llm-responses-with-rag-in-java/tree/jconfdominicana2025-exercise-2-solution)
 
 ## Conclusión
 
