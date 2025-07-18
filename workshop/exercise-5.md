@@ -435,8 +435,8 @@ TODO
 
 ### Cómo nos ayudó Spring AI
 
-- ``: misma API para pgvector, Redis, Pinecone o Chroma.
-- ``: utilitario listo para generar chunks sin pasarte del tamaño de la ventana.
+- `VectorStore`: misma API para pgvector, Redis, Pinecone o Chroma.
+- `TokenTextSplitter`: utilitario listo para generar chunks sin pasarte del tamaño de la ventana.
 - **Autoconfiguración**: basta un *starter* y una `DataSource` para persistir embeddings.
 - **Advisors**: añaden memoria de conversación y RAG al `ChatClient` con una sola línea.
 
