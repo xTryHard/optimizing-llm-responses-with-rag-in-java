@@ -123,3 +123,5 @@ En este ejercicio hemos dado un salto cualitativo, pasando de una simple API a u
 ### Próximo ejercicio
 
 Hemos construido una aplicación de chat conversacional y reactiva. Ahora, ¿cómo hacemos para que responda preguntas sobre nuestros propios datos? En el próximo ejercicio, finalmente abordaremos la "R" de RAG (Retrieval-Augmented Generation), conectando nuestro asistente a una base de conocimientos para que pueda ofrecer respuestas fundamentadas y precisas.
+
+[Ejercicio 4: Generación Aumentada por Recuperación (RAG) - El Enfoque Manual](./exercise-4.md)

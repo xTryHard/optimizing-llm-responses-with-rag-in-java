@@ -211,3 +211,4 @@ En este ejercicio, hemos implementado una forma rudimentaria de RAG y, lo más i
 El problema de la ineficiencia y la escalabilidad nos lleva directamente a la necesidad de una solución más sofisticada. ¿Cómo podemos encontrar y enviar solo los fragmentos de texto más relevantes para la pregunta del usuario, en lugar de todo el documento? La respuesta es utilizando Embeddings y una Base de Datos de Vectores (Vector Store).
 
 ### Próximo ejercicio
+[Ejercicio 5: Generación Aumentada por Recuperación (RAG) – Ingesta Inteligente](exercise-5.md)

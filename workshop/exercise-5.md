@@ -173,7 +173,7 @@ public class PDFIngestionStrategy implements IngestionStrategy {
 }
 ```
 Esta estrategia usa PagePdfDocumentReader para convertir cada página del PDF en un Document:
-- Ideal para documentos largos como el Decreto 664-12: no necesitas trocear manualmente.
+- Ideal para documentos largos como el [Decreto 664-12](../src/main/resources/simv/Decreto-No.-664-12.pdf): no necesitas hacer _chunking_ manualmente.
 - El lector preserva saltos de línea y columnas mejor que un extractor plano.
 - Registra cuántas páginas se convirtieron para verificar que el PDF no está vacío.
 
@@ -281,7 +281,7 @@ Este runner se ejecuta al iniciar la aplicación y orquesta todo el flujo ETL:
 
 ## 5 · Similarity Search con *Question‑Answer Advisor*
 
-En `ChatAssistantService` inyecta el `VectorStore` y añade el advisor.
+### 5. 1 En `ChatAssistantService` inyecta el `VectorStore` y añade el QA advisor.
 
 ```java
 @Service
@@ -332,13 +332,26 @@ public class ChatAssistantService implements ChatAssistant {
 
 `QuestionAnswerAdvisor` – combina `VectorStore` + `PromptTemplate` + `SearchRequest`.
 
+### 5. 2 En `ChatAssistantService`, actualiza `askQuestionWithContext`.
+
+```java
+    @Override
+    public Flux<String> askQuestionWithContext(String conversationId, String question) {
+        return chatClient.prompt()
+                .user(question)
+                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
+                .stream()
+                .content();
+    }
+```
+
 ---
 
-### 6 · Actualiza los archivos de prompts existentes (`system-prompt.md` y `rag-prompt-template.st`)
+## 6 · Actualiza los archivos de prompts existentes (`system-prompt.md` y `rag-prompt-template.st`)
 
-Asegúrate de que los archivos ya existentes en `src/main/resources/prompts/` contengan el contenido que se muestra a continuación.
+Asegúrate de que los archivos ya existentes en `src/main/resources/` contengan el contenido que se muestra a continuación.
 
-#### 6.1 `system-prompt.md`
+### 6.1 `system-prompt.md`
 
 ```md
 # SIMV Bot – System Prompt
@@ -379,7 +392,7 @@ Solo puedes utilizar la información recuperada mediante RAG.
 - Si la pregunta es ambigua, solicita una aclaración breve antes de responder.
 ```
 
-#### 6.2 `rag-prompt-template.st`
+### 6.2 `rag-prompt-template.st`
 
 ```st
 PREGUNTA DEL USUARIO:
@@ -407,12 +420,15 @@ Estos archivos se cargan automáticamente gracias a las anotaciones `@Value` que
 
 ---
 
-### 7 · ¡Hora de probar!
+## 7 · ¡Hora de probar!
 
 1. **Archivos de prueba** – En `src/main/resources/simv` ya existen:
 
    - `Decreto-No.-664-12.pdf`
-   - `sanciones.csv` Estos serán procesados automáticamente por `PDFIngestionStrategy` y `CSVIngestionStrategy`.
+   - `sanciones.csv`
+   
+   Estos serán procesados automáticamente por `PDFIngestionStrategy` y `CSVIngestionStrategy`.
+
 
 2. **Arranca la aplicación** – Desde la raíz del proyecto ejecuta:
 
@@ -430,7 +446,7 @@ Estos archivos se cargan automáticamente gracias a las anotaciones `@Value` que
 
 ---
 
-### Solución
+## Solución
 
 TODO
 
