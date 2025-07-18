@@ -16,8 +16,9 @@ public class ChatAssistantService implements ChatAssistant {
 
     @Override
     public String getResponse(String message) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getResponse'");
+        return this.chatClient.prompt()
+                .user(message)
+                .call().content();
     }
 
     @Override
