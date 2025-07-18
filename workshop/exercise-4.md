@@ -10,21 +10,21 @@ Este enfoque nos permitirá responder preguntas sobre el glosario, pero también
 
 ## Manos a la obra
 
-### Parte 1 - Actualizar la Interfaz `ChatAssistant`
+### Parte 1 - Verificar la Interfaz `ChatAssistant`
 
-Primero, vamos a añadir un nuevo método a nuestra interfaz `ChatAssistant` que se encargará específicamente de las preguntas que requieren contexto externo.
-
-Añade la siguiente firma de método a la interfaz `ChatAssistant.java`:
+Verifica que la siguiente firma de método existe en la interfaz `ChatAssistant.java`:
 
 ```java
 // src/main/java/com/theitdojo/optimizing_llm_responses_with_rag_in_java/services/ChatAssistant.java
 
+import reactor.core.publisher.Flux;
+
 public interface ChatAssistant {
-    // ... métodos existentes de ejercicios anteriores
-    Stream<String> askQuestionWithContext(String conversationId, String question);
+   // ... métodos existentes de ejercicios anteriores
+   Flux<String> askQuestionWithContext(String conversationId, String question);
 }
 ```
-Nota: Dependiendo de tu progreso en los ejercicios anteriores, este método ya podría existir. Asegúrate de que la firma coincida.
+Nota: Dependiendo de tu progreso en los ejercicios anteriores, este método ya __debería__ existir. Asegúrate de que la firma coincida.
 
 ### Parte 2 - Crear un `PromptTemplate` para el Contexto
 
@@ -35,7 +35,6 @@ En nuestra clase `ChatConfig`, crearemos un bean para un `PromptTemplate` que in
 1. Crea el archivo de plantilla: Primero, crea un nuevo archivo llamado `rag-prompt-template.st` en la carpeta `src/main/resources`. El `.st` es por "StringTemplate", el formato que usa Spring AI.
 
 ```st
-// src/main/resources/rag-prompt-template.st
 Usa el siguiente contexto para responder la pregunta al final.
 Si la respuesta no puede ser encontrada en el contexto, indica amablemente que no tienes la información para responder esa pregunta.
 No añadas ninguna otra información adicional.
@@ -47,35 +46,15 @@ Pregunta:
 {question}    
 ```
 
-2. Crea el Bean del `PromptTemplate`: Ahora, en tu clase `ChatConfig`, crea un bean que cargue esta plantilla.
-
-```java
-    // src/main/java/com/theitdojo/optimizing_llm_responses_with_rag_in_java/config/ChatConfig.java
-    import org.springframework.ai.chat.prompt.PromptTemplate;
-    import org.springframework.beans.factory.annotation.Value;
-    import org.springframework.core.io.Resource;
-    // ...
-
-    @Configuration
-    public class ChatConfig {
-
-        // ... bean de ChatMemory existente
-
-        @Bean
-        public PromptTemplate ragPromptTemplate(@Value("classpath:/rag-prompt-template.st") Resource ragPromptTemplate) {
-            return new PromptTemplate(ragPromptTemplate);
-        }
-    }
-```
-
 ### Parte 3 - Cargar el Contexto y Usar el Template
 
-Ahora, modificaremos `ChatAssistantService` para cargar el contenido del `glosario.txt` y usar nuestro nuevo `PromptTemplate` para responder.
+Ahora, modificaremos `ChatAssistantService` para cargar el contenido del `glosario.txt`, `rag-prompt-template.st` y usar `PromptTemplate` para responder.
 
 1. __Cargar el archivo de glosario__: En `ChatAssistantService`, inyectaremos el archivo del glosario como un `Resource` y lo leeremos como un `String` en el constructor.
-2. __Implementar__ `askQuestionWithContext`: Implementaremos el método que dejamos pendiente. Inyectaremos el `PromptTemplate` que acabamos de crear. Luego, usaremos este template para construir un `Prompt` con el contexto del glosario y la pregunta del usuario.
+2. __Cargar el archivo de del prompt template_: En `ChatAssistantService`, inyectaremos el archivo del prompt template como un `Resource` y lo agregaremos como parámetro al constructor de un objeto `PromptTemplate` que instanciaremos.
+3. __Implementar__ `askQuestionWithContext`: Implementaremos el método que dejamos pendiente. Inyectaremos el `PromptTemplate` que acabamos de crear. Luego, usaremos este template para construir un `Prompt` con el contexto del glosario y la pregunta del usuario.
 
-Actuaiza tu `ChatAssistantService.java` para que se vea así: 
+Actualiza tu `ChatAssistantService.java` para que se vea así: 
 
 ```java
     package com.theitdojo.optimizing_llm_responses_with_rag_in_java.services;
@@ -95,48 +74,37 @@ Actuaiza tu `ChatAssistantService.java` para que se vea así:
 
     @Service
     public class ChatAssistantService implements ChatAssistant {
+       private final ChatClient chatClient;
+       private final String glossaryContext;
+       private final PromptTemplate promptTemplate;
 
-        private final ChatClient chatClient;
-        private final ChatMemory chatMemory;
-        private final PromptTemplate ragPromptTemplate;
-        private final String glossaryContext;
+       public ChatAssistantService(ChatClient.Builder builder,
+                                   @Value("classpath:/system-prompt.md") Resource systemPrompt,
+                                   ChatMemory chatMemory,
+                                   @Value("classpath:/simv/glosario.txt") Resource glossaryResource,
+                                   @Value("classpath:/rag-prompt-template.st") Resource ragPromptTemplate) throws IOException {
 
-        public ChatAssistantService(ChatClient.Builder builder,
-                                    @Value("classpath:/system-prompt.md") Resource systemPrompt,
-                                    ChatMemory chatMemory,
-                                    PromptTemplate ragPromptTemplate, // Inyectar el PromptTemplate
-                                    @Value("classpath:/simv/glosario.txt") Resource glossaryResource) throws IOException { // Inyectar el glosario
-            this.chatMemory = chatMemory;
-            this.ragPromptTemplate = ragPromptTemplate;
-            this.chatClient = builder
-                    .defaultSystem(systemPrompt)
-                    .build();
+          this.chatClient = builder
+                  .defaultSystem(systemPrompt)
+                  .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                  .build();
 
-            // Cargar el contenido del glosario a un String
-            this.glossaryContext = glossaryResource.getContentAsString(StandardCharsets.UTF_8);
-        }
+          this.promptTemplate = new PromptTemplate(ragPromptTemplate);
+          this.glossaryContext = glossaryResource.getContentAsString(StandardCharsets.UTF_8);
+       }
 
         // ... getResponse, streamResponse, askQuestion...
 
-        @Override
-        public Stream<String> askQuestionWithContext(String conversationId, String question) {
-            // 1. Crear un mapa con los valores para el template
-            Map<String, Object> model = Map.of(
-                    "context", this.glossaryContext,
-                    "question", question
-            );
+       @Override
+       public Flux<String> askQuestionWithContext(String conversationId, String question) {
+          Prompt prompt = this.promptTemplate.create(Map.of("context", this.glossaryContext, "question", question));
 
-            // 2. Crear un Prompt usando el template y el modelo
-            Prompt prompt = this.ragPromptTemplate.create(model);
-
-            // 3. Llamar al LLM con el prompt que ya incluye el contexto
-            return chatClient.prompt(prompt)
-                    .chatReference(conversationId)
-                    .chatMemory(this.chatMemory)
-                    .stream()
-                    .content()
-                    .toStream();
-        }
+          return chatClient.prompt(prompt)
+                  .user(question)
+                  .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
+                  .stream()
+                  .content();
+       }
     }
     
 ```
@@ -144,51 +112,20 @@ Actuaiza tu `ChatAssistantService.java` para que se vea así:
 Nota: El constructor ahora lanza una IOException. No te olvides de añadir throws IOException a la firma del constructor.
 
 
-### Parte 4 - Exponer un Nuevo Endpoint para RAG
-
-Finalmente, vamos a crear un nuevo endpoint en nuestro `ChatController `para poder probar esta funcionalidad.
-
-Añade el siguiente método a `ChatController.java`
-
-```java
-// src/main/java/com/theitdojo/optimizing_llm_responses_with_rag_in_java/controllers/ChatController.java
-import jakarta.servlet.http.HttpSession;
-// ...
-
-@RestController
-@RequestMapping("/ai")
-public class ChatController {
-    // ... código existente del controlador ...
-    private static final Logger logger = LoggerFactory.getLogger(ChatController.class);
-
-    @GetMapping("/rag")
-    public String rag(HttpSession session, @RequestParam String question) {
-        Stream<String> responseStream = chatAssistant.askQuestionWithContext(session.getId(), question);
-
-        StringBuilder responseBuilder = new StringBuilder();
-
-        responseStream.forEach(chunk -> {
-            logger.info(chunk);
-            responseBuilder.append(chunk);
-        });
-
-        return responseBuilder.toString();
-    }
-}
-```
-
 ## Hora de probar nuestro RAG manual 
 
 1. Ejecuta la aplicación.
-2. Abre tu navegador y haz una pregunta cuya respuesta se encuentre en glosario.txt: `http://localhost:8080/ai/rag?question=¿Qué es un emisor?`
+2. Abre tu navegador y haz una pregunta en la interfaz gráfica de nuestro chat-bot que agregamos en el __Ejercicio 3__ cuya respuesta se encuentre en glosario.txt: `¿Qué es un emisor?`
+   - Sé paciente, una gran cantidad de tokens están siendo procesados.
    - Deberías obtener una respuesta precisa basada en la definición del archivo.
-3. Ahora, haz una pregunta que no tenga que ver con el contexto proporcionado: `http://localhost:8080/ai/rag?question=¿Cuál es la capital de España?`
-   - Gracias a nuestras instrucciones en el PromptTemplate, el asistente debería responder algo como: "Lo siento, no tengo la información para responder esa pregunta."
+3. Ahora, haz una pregunta que no tenga que ver con el contexto proporcionado: `¿Cuál es la capital de República Dominicana?`
+   - Si la respuesta está dentro de toda la data de entrenamiento del modelo en uso `qwen3:1.7b-q4_K_M`, probablemente responda.
+   - Si la respuesta no se encuentra en su data de entrenamiento ni el contexto proporcionado, gracias a nuestras instrucciones en el `PromptTemplate`, el asistente debería responder algo como: "Lo siento, no tengo la información para responder esa pregunta."
 
 
 ### Análisis: Las (Grandes) Limitaciones de este Enfoque 
 
-1. Uso Ineficiente de Tokens y Alto Costo: Con cada pregunta que hacemos al endpoint `/rag`, estamos enviando el contenido completo del archivo `glosario.txt` al LLM. Nuestro glosario tiene ~4KB, lo que equivale a aproximadamente 1000 tokens. Si usáramos una API de pago como la de OpenAI, estaríamos pagando por esos 1000 tokens de contexto en cada consulta, incluso si la pregunta solo necesita una frase del documento para ser respondida. Esto es extremadamente caro e ineficiente.
+1. Uso Ineficiente de Tokens y Alto Costo: Con cada pregunta que hacemos estamos enviando el contenido completo del archivo `glosario.txt` al LLM. Nuestro glosario tiene ~4KB, lo que equivale a aproximadamente 1000 tokens. Si usáramos una API de pago como la de OpenAI, estaríamos pagando por esos 1000 tokens de contexto en cada consulta, incluso si la pregunta solo necesita una frase del documento para ser respondida. Esto es extremadamente caro e ineficiente.
 2. Límite de la ventana de Contexto: Los LLMs tienen una "ventana de contexto" (context window) finita, es decir, un número máximo de tokens que pueden procesar a la vez (por ejemplo, 4K, 8K, 128K). Nuestro glosario cabe sin problemas, pero ¿qué pasaría si quisiéramos que el asistente respondiera preguntas sobre un manual de 200 páginas o la documentación completa de un proyecto? El texto simplemente no cabría en el prompt, y este enfoque fallaría por completo.
 3. Baja Relevancia y Posible "Ruido": Al enviar todo el documento, le estamos dando al modelo mucha información irrelevante o "ruido". Para responder "¿Qué es un emisor?", no necesita saber la definición de "Manipulación de mercado". Este exceso de información no solo es ineficiente, sino que a veces puede confundir al modelo y degradar la calidad de la respuesta.
 
