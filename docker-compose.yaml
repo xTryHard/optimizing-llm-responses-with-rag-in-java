@@ -1,8 +1,27 @@
 version: '3.8'
 
 services:
+  app:
+    build:
+      context: .
+    container_name: optimizing-with-rag-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - optimizing-with-rag-db
+      - ollama
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://optimizing-with-rag-db:5432/optimizing-with-rag-db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      OLLAMA_BASE_URL: http://ollama:11434
+      VAADIN_FRONTEND_HOTDEPLOY: "false"
+
+    networks:
+      - ragnet
+
   optimizing-with-rag-db:
-    image: pgvector/pgvector:pg16      # official pgvector image  [oai_citation:0‡hub.docker.com](https://hub.docker.com/r/pgvector/pgvector?utm_source=chatgpt.com)
+    image: pgvector/pgvector:pg16
     container_name: optimizing-with-rag-db
     environment:
       POSTGRES_DB: optimizing-with-rag-db
@@ -12,20 +31,31 @@ services:
       - "5432:5432"
     volumes:
       - pgvector_data:/var/lib/postgresql/data
-      # (Optional) initialize the extension automatically
-      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ragnet
+
   ollama:
     image: ollama/ollama
     container_name: ollama
     ports:
       - "11434:11434"
     volumes:
-      - ./ollama_data:/root/.ollama  # Bind host directory to container directory
+      - ./ollama_data:/root/.ollama
     restart: unless-stopped
     entrypoint: >
-      sh -c "OLLAMA_CONTEXT_LENGTH=16384 ollama serve & sleep 5 && ollama pull qwen3:1.7b-q4_K_M && ollama pull mxbai-embed-large && tail -f /dev/null"
+      sh -c "OLLAMA_CONTEXT_LENGTH=16384 ollama serve &
+             sleep 5 &&
+             ollama pull qwen3:1.7b-q4_K_M &&
+             ollama pull mxbai-embed-large &&
+             tail -f /dev/null"
+    networks:
+      - ragnet
 
 volumes:
   pgvector_data:
   ollama_data:
     driver: local
+
+networks:
+  ragnet:
+    driver: bridge
