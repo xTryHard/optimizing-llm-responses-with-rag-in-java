@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -35,19 +33,14 @@ services:
       - ragnet
 
   ollama:
-    image: ollama/ollama
+    build:
+      context: ./ollama
     container_name: ollama
     ports:
       - "11434:11434"
     volumes:
       - ./ollama_data:/root/.ollama
     restart: unless-stopped
-    entrypoint: >
-      sh -c "OLLAMA_CONTEXT_LENGTH=16384 ollama serve &
-             sleep 5 &&
-             ollama pull qwen3:1.7b-q4_K_M &&
-             ollama pull mxbai-embed-large &&
-             tail -f /dev/null"
     networks:
       - ragnet
 
